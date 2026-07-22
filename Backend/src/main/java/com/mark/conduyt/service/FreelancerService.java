@@ -24,6 +24,8 @@ public class FreelancerService {
     private final SkillTagRepository skillTagRepository;
     private final UserService userService; // Injecting the core user service
     private final ImageHostingService imageHostingService;
+    private final EmailService emailService;
+    private final OtpService otpService;
 
     @Transactional(rollbackFor = Exception.class)
     public void createFreelancer(UserRegisterRequestDTO request, MultipartFile profileImage, MultipartFile cvFile) throws IOException {
@@ -55,6 +57,10 @@ public class FreelancerService {
         }
 
         freelancerRepository.save(freelancer);
+
+        String otp = otpService.generateOtp(user.getEmail());
+
+        emailService.sendRegistrationOtpEmail(user.getEmail(),otp,user.getFullName(), request.getTargetRole());
     }
 
     private SkillTag getOrCreateSkill(String skillName) {

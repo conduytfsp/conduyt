@@ -50,10 +50,19 @@ public class AuthController {
 
     @PostMapping("/validate-otp")
     public ResponseEntity<ApiResponse<Boolean>> validateOtp(@RequestParam String email, @RequestParam String otp) {
+        boolean isValid = userService.validateOtp(email, otp);
+        ApiResponse<Boolean> response = new ApiResponse<>(isValid, "OTP validation successful.", null);
+        return ResponseEntity.ok(response);
+    }
+
+
+    @PostMapping("/verify-user")
+    public ResponseEntity<ApiResponse<Boolean>> verifyUser(@RequestParam String email, @RequestParam String otp) {
         boolean isValid = userService.validateUser(email, otp);
         ApiResponse<Boolean> response = new ApiResponse<>(isValid, "OTP validation successful.", null);
         return ResponseEntity.ok(response);
     }
+
 
     @PostMapping("/password-initiate")
     public ResponseEntity<ApiResponse<String>> initiatePasswordReset(@RequestParam String email) {

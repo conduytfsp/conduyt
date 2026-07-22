@@ -24,26 +24,17 @@ spring:
       name: ${SECURITY_USERNAME}
       password: ${SECURITY_PASSWORD}
 
-  payment:
-    signature:
-      secret: ${PAYMENT_SIGNATURE_SECRET}
-
   mail:
-    host: in-v3.mailjet.com
+    host: smtp.gmail.com
     port: 587
-    username: ${MAILJET_API_KEY}         # Mailjet public API key
-    password: ${MAILJET_API_SECRET_KEY}      # Mailjet private API key
-    protocol: smtp
-    from: conduytfsp@gmail.com
+    username: conduytfsp@gmail.com
+    password: ${GMAIL_APP_PASSWORD} # Paste 16-char app password here
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
-          connectiontimeout: 15000
-          timeout: 15000
-          writetimeout: 15000
 
 
   servlet:
@@ -52,3 +43,7 @@ spring:
       max-file-size: 10MB
       max-request-size: 20MB
       file-size-threshold: 2MB
+
+app:
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:3000}

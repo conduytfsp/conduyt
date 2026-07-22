@@ -52,6 +52,9 @@ public class User {
     private Client client;
 
     public String getFullName() {
+        if (this.middleName == null) {
+            return firstName + " " + lastName;
+        }
         return this.firstName + " " + this.middleName + " " + this.lastName;
     }
 }

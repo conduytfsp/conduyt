@@ -101,6 +101,8 @@ public class UserService implements UserDetailsService {
             user.setAccountStatus(AccountStatus.PROFILE_INCOMPLETE);
         }
 
+        emailService.sendSuccessfulRegistrationEmail(user.getEmail(),user.getFullName());
+
         // Persist the updated status
         userRepository.save(user);
 
