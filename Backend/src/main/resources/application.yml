@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: Conduyt
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?serverTimezone=Asia/Kolkata
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      max-lifetime: 1800000
+
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  security:
+    user:
+      name: ${SECURITY_USERNAME}
+      password: ${SECURITY_PASSWORD}
+
+  payment:
+    signature:
+      secret: ${PAYMENT_SIGNATURE_SECRET}
+
+  mail:
+    host: in-v3.mailjet.com
+    port: 587
+    username: ${MAILJET_API_KEY}         # Mailjet public API key
+    password: ${MAILJET_API_SECRET_KEY}      # Mailjet private API key
+    protocol: smtp
+    from: conduytfsp@gmail.com
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 15000
+          timeout: 15000
+          writetimeout: 15000
+
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 20MB
+      file-size-threshold: 2MB
