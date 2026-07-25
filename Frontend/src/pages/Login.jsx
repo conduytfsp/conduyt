@@ -15,7 +15,7 @@ function Login() {
   const navigate = useNavigate();
 
   // ================= GOOGLE LOGIN =================
-gi
+
   const handleGoogleLogin = async () => {
     try {
       const provider = new GoogleAuthProvider();
