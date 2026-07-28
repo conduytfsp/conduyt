@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
 import PublicNavbar from '../components/layout/PublicNavbar'
 import Button from "../components/ui/Button"
+import { NavLink } from 'react-router'
 
 function LandingLayout() {
   return<>
@@ -55,8 +56,8 @@ function LandingLayout() {
       collaborations.
     </p>
 <div Button className='flex gap-3 justify-center m-6'>
-<Button>I'm Looking for Work</Button>
-<Button variant='client'>I need to hire</Button>
+<Button as={NavLink} to="/Register">I'm Looking for Work</Button>
+<Button as={NavLink} to="/Register" variant='client'>I need to hire</Button>
 </div>
   </div>
   

@@ -1,11 +1,11 @@
-import "tailwindcss";
 import React from 'react'
-import Button from "../ui/Button.jsx";
 import logo from "../../../public/assets/Conduyt-blue.png"
 import { NavLink } from "react-router-dom";
+import Button from '../ui/Button'
+import { Bell,Mail, User} from "lucide-react";
+import SearchBar from '../ui/SearchBar';
 
-
-function PublicNavbar() {
+function FreelancerNav() {
 
    return (
    <nav
@@ -37,26 +37,40 @@ function PublicNavbar() {
                 </NavLink>
              </li>
               <li className="hover:text-freelancer-primary transition cursor-pointer">
-                <NavLink to={"/FindWork"}>Find Work</NavLink>
+                <NavLink to={"/findWork"}>Find Work</NavLink>
               </li>
 
               <li className="hover:text-freelancer-primary transition cursor-pointer">
-               <NavLink to={"/AIFeatures"}>AI Features</NavLink>
+               <NavLink to={"/aiFeatures"}>AI Features</NavLink>
               </li>
 
-              {/* <li className="hover:text-freelancer-primary transition cursor-pointer">
-              <NavLink to={"/Pricing"}>Pricing</NavLink>
-              </li> */}
-
               <li className="hover:text-freelancer-primary transition cursor-pointer">
-              <NavLink to={"/About"}>About</NavLink>
+              <NavLink to={"/about"}>About</NavLink>
               </li>
 
          </ul>
-        <Button as={NavLink} to="/Login" className="mx-5 p-3">SignUp/Login</Button>
+
+         <SearchBar />
+           <div className='flex gap-3 mx-5' >
+            <Button as={NavLink} to="/roleSwitch" className="whitespace-normal text-center leading-tight">
+             Smart Role Switch
+            </Button>
+
+             <NavLink to="/notifications">
+                <Bell className="w-6 h-6  hover:text-freelancer-primary" />
+             </NavLink>
+             <NavLink to="/message">
+               <Mail className="w-6 h-6  hover:text-freelancer-primary" />
+             </NavLink>
+
+              <NavLink to="/freelancerProfile">
+                  <User className="w-6 h-6  hover:text-freelancer-primary" />
+             </NavLink>
+    </div>
     </nav>
+    
 )
 
 }
 
-export default PublicNavbar;
+export default FreelancerNav

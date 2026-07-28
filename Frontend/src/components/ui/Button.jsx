@@ -1,4 +1,4 @@
-import React, { Children } from "react";
+import React from "react";
 
 function Button({
     children,
@@ -6,7 +6,9 @@ function Button({
     size="md",
     onClick,
     type ="button",
-    className = ""
+    className = "",
+    as: Component = "button",
+  ...props
 })
  {
   const variants = {
@@ -43,8 +45,8 @@ function Button({
   };
 
 return<>
-    <button
-      type={type}
+     <Component
+      type={Component === "button" ? type : undefined}
       onClick={onClick}
       className={`
         ${baseStyles}
@@ -52,9 +54,10 @@ return<>
         ${sizes[size]}
         ${className}
       `}
+      {...props}
     >
       {children}
-    </button>
+    </Component>
     </>
 }
 export default Button;
