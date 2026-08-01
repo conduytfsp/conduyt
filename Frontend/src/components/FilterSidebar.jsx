@@ -1,5 +1,3 @@
-import { Search, BadgeIndianRupee, Sparkles } from "lucide-react";
-
 function FilterSidebar({
   skill,
   setSkill,
@@ -8,10 +6,29 @@ function FilterSidebar({
   match,
   setMatch,
 }) {
-  return (
-    <div className="bg-white rounded-3xl shadow-lg border border-blue-100 p-8">
+  const resetFilters = () => {
+    setSkill("");
+    setBudget("");
+    setMatch("");
+  };
 
-      <h2 className="text-2xl font-bold text-blue-700 mb-6">
+  const skills = [
+    "React",
+    "JavaScript",
+    "Python",
+    "Java",
+    "Spring Boot",
+    "Node.js",
+    "MongoDB",
+    "Tailwind",
+  ];
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#D7EAF5] shadow-lg p-6">
+
+      {/* Header */}
+
+      <h2 className="text-2xl font-bold bg-gradient-to-r from-[#1798D7] to-[#4372B5] bg-clip-text text-transparent mb-6">
         Filters
       </h2>
 
@@ -19,40 +36,45 @@ function FilterSidebar({
 
       <div className="mb-6">
 
-        <label className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
-
-          <Search size={18} />
-
-          Skill
-
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          🔍 Skill
         </label>
 
-        <input
-          type="text"
-          placeholder="React, Java, Python..."
-          value={skill}
-          onChange={(e) => setSkill(e.target.value)}
-          className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <div className="flex flex-wrap gap-2">
+
+          {skills.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() =>
+                setSkill(skill === item ? "" : item)
+              }
+              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 ${
+                skill === item
+                  ? "bg-[#1798D7] text-white border-[#1798D7]"
+                  : "bg-[#EAF6FC] text-[#4372B5] border-[#C8E4F2] hover:bg-[#D8F0FA]"
+              }`}
+            >
+              {item}
+            </button>
+          ))}
+
+        </div>
 
       </div>
 
-      {/* Budget */}
+      {/* Minimum Budget */}
 
       <div className="mb-6">
 
-        <label className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
-
-          <BadgeIndianRupee size={18} />
-
-          Minimum Budget
-
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          💰 Minimum Budget
         </label>
 
         <select
           value={budget}
           onChange={(e) => setBudget(e.target.value)}
-          className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-[#B9D9EA] rounded-xl px-4 py-3 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#1798D7]"
         >
           <option value="">All Budgets</option>
           <option value="5000">₹5,000+</option>
@@ -67,36 +89,42 @@ function FilterSidebar({
 
       <div className="mb-6">
 
-        <label className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
-
-          <Sparkles size={18} />
-
-          AI Match
-
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          ✨ AI Match
         </label>
 
-        <select
-          value={match}
-          onChange={(e) => setMatch(e.target.value)}
-          className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Matches</option>
-          <option value="80">80%+</option>
-          <option value="90">90%+</option>
-          <option value="95">95%+</option>
-        </select>
+        <div className="flex flex-wrap gap-2">
+
+          {[
+            { label: "All", value: "" },
+            { label: "80%+", value: "80" },
+            { label: "90%+", value: "90" },
+            { label: "95%+", value: "95" },
+          ].map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => setMatch(item.value)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 ${
+                match === item.value
+                  ? "bg-[#4372B5] text-white border-[#4372B5]"
+                  : "bg-[#EEF3F9] text-[#4372B5] border-[#D2DFEA] hover:bg-[#E2EBF4]"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+
+        </div>
 
       </div>
 
-      {/* Reset Button */}
+      {/* Reset */}
 
       <button
-        onClick={() => {
-          setSkill("");
-          setBudget("");
-          setMatch("");
-        }}
-        className="w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:opacity-90 text-white py-3 rounded-full font-semibold transition-all duration-300"
+        type="button"
+        onClick={resetFilters}
+        className="w-full bg-gradient-to-r from-[#1798D7] to-[#4372B5] text-white py-3 rounded-xl font-semibold shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
       >
         Reset Filters
       </button>

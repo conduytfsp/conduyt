@@ -1,5 +1,4 @@
 import JobCard from "./JobCard";
-import { SearchX } from "lucide-react";
 
 function JobList({ jobs, setSelectedJob }) {
   return (
@@ -13,21 +12,14 @@ function JobList({ jobs, setSelectedJob }) {
           />
         ))
       ) : (
-        <div className="flex flex-col items-center justify-center py-20">
-
-          <SearchX
-            size={70}
-            className="text-blue-300 mb-5"
-          />
-
-          <h2 className="text-2xl font-bold text-gray-700">
-            No Jobs Found
-          </h2>
-
-          <p className="text-gray-500 mt-2 text-center">
-            Try changing your search or filter options.
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-lg">
+            No freelance projects found.
           </p>
 
+          <p className="text-gray-400 text-sm mt-2">
+            Try changing your search or filters.
+          </p>
         </div>
       )}
     </div>
