@@ -4,7 +4,7 @@ import LandingLayout from "./layouts/LandingLayout";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import FreelancerProfile from "./pages/FreelancerProfile";
+import FreelancerDashboard from "./pages/FreelancerDashboard";
 import ClientDashboard from "./pages/ClientDashboard";
 import Help from "./pages/Help";
 import FindWork from "./pages/FindWork";
@@ -21,8 +21,6 @@ function App() {
         <Route path="/find-work" element={<FindWork />} />
 
         {/* Other Pages */}
-        <Route path="/freelancerProfile" element={<FreelancerProfile />} />
-
         <Route path="/login" element={<Login />} />
 
         <Route path="/register" element={<Register />} />
@@ -33,7 +31,8 @@ function App() {
           path="/client-dashboard"
           element={<ClientDashboard />}
         />
-
+        {/* Freelancer Page */}
+         <Route path="/freelancerdashboard/*" element={<FreelancerDashboard />} />
       </Routes>
     </Router>
   );
