@@ -8,11 +8,11 @@ import { seedProfile } from '@/lib/mockData';
 import { cn, initials } from '@/lib/utils';
 
 const NAV_ITEMS = [
-  { to: '/freelancerdashboard/profile', label: 'Profile', icon: UserRound },
-  { to: '/freelancerdashboard/portfolio', label: 'Portfolio', icon: Briefcase },
-  { to: '/freelancerdashboard/applications', label: 'Applications', icon: ClipboardList },
-  { to: '/freelancerdashboard/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/freelancerdashboard/security', label: 'Security', icon: ShieldCheck },
+  { to: '/dashboard/profile', label: 'Profile', icon: UserRound },
+  { to: '/dashboard/portfolio', label: 'Portfolio', icon: Briefcase },
+  { to: '/dashboard/applications', label: 'Applications', icon: ClipboardList },
+  { to: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
+  { to: '/dashboard/security', label: 'Security', icon: ShieldCheck },
 ];
 
 export function DashboardLayout() {

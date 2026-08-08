@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-// Import the custom hook from your config directory
 import { useAxiosInstance } from "../config/axiosConfig";
 
 function Register() {
@@ -8,20 +7,48 @@ function Register() {
   const axiosInstance = useAxiosInstance();
 
   const [step, setStep] = useState(1);
-  const [selectedPersona, setSelectedPersona] = useState(""); // "freelancer" or "client"
+  const [selectedPersona, setSelectedPersona] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Skill Tags state for Freelancer
+
+  // ================= SKILL TAGS STATE =================
+  const [availableSkills, setAvailableSkills] = useState([]);
   const [skillInput, setSkillInput] = useState("");
   const [skills, setSkills] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Preview URL for Profile Picture
+  // Fetch available skills on component mount
+  useEffect(() => {
+    const fetchSkills = async () => {
+      try {
+        console.log("Attempting to fetch skills...");
+        const response = await axiosInstance.get("/api/skills");
+        console.log("Skills fetch response:", response.data);
+
+        // Handle variations in your ApiResponse wrapper (data vs payload)
+        const fetchedData = response.data.data || response.data.payload || response.data;
+
+        if (Array.isArray(fetchedData)) {
+          setAvailableSkills(fetchedData);
+        } else {
+          console.error("Expected an array of skills, but got:", fetchedData);
+        }
+      } catch (error) {
+        console.error("Failed to fetch skills. Check Spring Security Config!", error);
+      }
+    };
+    fetchSkills();
+  }, [axiosInstance]);
+
+  // Preview URLs
   const [profilePreview, setProfilePreview] = useState(null);
+  const [companyLogoPreview, setCompanyLogoPreview] = useState(null);
+
+  // OTP
+  const [otp, setOtp] = useState("");
 
   // ================= FORM DATA =================
   const [formData, setFormData] = useState({
-    // Personal Details
-    profilePicture: null,
+    profileImage: null,
     firstName: "",
     middleName: "",
     lastName: "",
@@ -29,71 +56,80 @@ function Register() {
     password: "",
     confirmPassword: "",
 
-    // Freelancer Specific Details
     title: "",
     bio: "",
     githubUrl: "",
     linkedinUrl: "",
     portfolioUrl: "",
-    resumeFile: null,
+    cvFile: null,
 
-    // Client Specific Details
-    clientType: "INDIVIDUAL", // "INDIVIDUAL" or "COMPANY"
+    clientType: "INDIVIDUAL",
     companyName: "",
     companyRole: "",
     companyWebsite: "",
     companyAddress: "",
     contactNumber: "",
     gstin: "",
+    companyLogo: null,
   });
 
-  // ================= HANDLE INPUT CHANGES =================
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
     if (type === "file") {
       const selectedFile = files[0];
       setFormData((prev) => ({ ...prev, [name]: selectedFile }));
 
-      // Generate preview if it's the profile picture
-      if (name === "profilePicture" && selectedFile) {
+      if (name === "profileImage" && selectedFile) {
         setProfilePreview(URL.createObjectURL(selectedFile));
+      }
+      if (name === "companyLogo" && selectedFile) {
+        setCompanyLogoPreview(URL.createObjectURL(selectedFile));
       }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  // ================= SKILL TAG HANDLERS =================
+  // ================= SKILL HANDLERS =================
   const handleAddSkill = (e) => {
-    e.preventDefault();
-    if (skillInput.trim() && !skills.includes(skillInput.trim())) {
-      setSkills([...skills, skillInput.trim()]);
+    if (e) e.preventDefault();
+    const trimmed = skillInput.trim();
+    if (trimmed && !skills.includes(trimmed)) {
+      setSkills([...skills, trimmed]);
       setSkillInput("");
+      setShowSuggestions(false);
     }
+  };
+
+  const handleSelectSkill = (skillLabel) => {
+    if (!skills.includes(skillLabel)) {
+      setSkills([...skills, skillLabel]);
+    }
+    setSkillInput("");
+    setShowSuggestions(false);
   };
 
   const handleRemoveSkill = (skillToRemove) => {
     setSkills(skills.filter((skill) => skill !== skillToRemove));
   };
 
-  // ================= NAVIGATION HANDLERS =================
+  // ================= NAVIGATION =================
   const handleStep1Continue = () => {
     if (
-      !formData.firstName ||
-      !formData.lastName ||
-      !formData.email ||
-      !formData.password ||
-      !formData.confirmPassword
+        !formData.firstName ||
+        !formData.lastName ||
+        !formData.email ||
+        !formData.password ||
+        !formData.confirmPassword ||
+        !formData.profileImage
     ) {
-      alert("Please fill in all required fields.");
+      alert("Please fill in all required fields and upload a profile picture.");
       return;
     }
-
     if (formData.password !== formData.confirmPassword) {
       alert("Passwords do not match.");
       return;
     }
-
     setStep(2);
   };
 
@@ -102,705 +138,429 @@ function Register() {
     setStep(3);
   };
 
-  // ================= SUBMIT FORM WITH AXIOS =================
-  const handleSubmit = async (e) => {
+  // ================= SUBMISSION =================
+  const handleRegistrationSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      // Build FormData for file upload & backend processing
-      const data = new FormData();
-      
-      // Personal Details
-      if (formData.profilePicture) {
-        data.append("profilePicture", formData.profilePicture);
-      }
-      data.append("firstName", formData.firstName);
-      data.append("middleName", formData.middleName);
-      data.append("lastName", formData.lastName);
-      data.append("email", formData.email);
-      data.append("password", formData.password);
-      data.append("persona", selectedPersona);
+      const requestData = {
+        firstName: formData.firstName,
+        middleName: formData.middleName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        targetRole: selectedPersona === "freelancer" ? "FREELANCER" : "CLIENT",
+      };
 
-      // Role Specific Details
       if (selectedPersona === "freelancer") {
-        data.append("title", formData.title);
-        data.append("bio", formData.bio);
-        data.append("githubUrl", formData.githubUrl);
-        data.append("linkedinUrl", formData.linkedinUrl);
-        data.append("portfolioUrl", formData.portfolioUrl);
-        if (formData.resumeFile) {
-          data.append("resumeFile", formData.resumeFile);
-        }
-        data.append("skills", JSON.stringify(skills));
-      } else if (selectedPersona === "client") {
-        data.append("clientType", formData.clientType);
+        requestData.title = formData.title;
+        requestData.bio = formData.bio;
+        requestData.githubUrl = formData.githubUrl;
+        requestData.linkedinUrl = formData.linkedinUrl;
+        requestData.portfolioUrl = formData.portfolioUrl;
+        requestData.skills = skills;
+      } else {
+        requestData.clientType = formData.clientType;
+        requestData.contactNumber = formData.contactNumber;
         if (formData.clientType === "COMPANY") {
-          data.append("companyName", formData.companyName);
-          data.append("companyRole", formData.companyRole);
-          data.append("companyWebsite", formData.companyWebsite);
-          data.append("companyAddress", formData.companyAddress);
-          data.append("contactNumber", formData.contactNumber);
-          data.append("gstin", formData.gstin);
+          requestData.companyName = formData.companyName;
+          requestData.companyRole = formData.companyRole;
+          requestData.companyWebsite = formData.companyWebsite;
+          requestData.companyAddress = formData.companyAddress;
+          requestData.gstin = formData.gstin;
         }
       }
 
-      // API Call using configured axiosInstance
-      const response = await axiosInstance.post("/auth/register", data, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      const data = new FormData();
+      data.append("data", new Blob([JSON.stringify(requestData)], { type: "application/json" }));
+
+      if (formData.profileImage) data.append("profileImage", formData.profileImage);
+      if (selectedPersona === "freelancer" && formData.cvFile) data.append("cv", formData.cvFile);
+      if (selectedPersona === "client" && formData.clientType === "COMPANY" && formData.companyLogo) {
+        data.append("companyLogo", formData.companyLogo);
+      }
+
+      await axiosInstance.post("/api/auth/register", data, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
-      alert(
-        `Registration complete as ${
-          selectedPersona === "freelancer" ? "Freelancer" : "Client"
-        }!`
-      );
-      navigate("/login");
+      alert("Registration successful! Please check your email for the OTP.");
+      setStep(4);
     } catch (error) {
       console.error("Registration failed:", error);
-      alert(
-        error.response?.data?.message ||
-          "An error occurred during registration. Please try again."
-      );
+      alert(error.response?.data?.message || "An error occurred during registration. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const params = new URLSearchParams({ email: formData.email, otp: otp });
+      await axiosInstance.post(`/api/auth/verify-user?${params.toString()}`);
+      alert("Account verified successfully! You can now log in.");
+      navigate("/login");
+    } catch (error) {
+      console.error("OTP Verification failed:", error);
+      alert(error.response?.data?.message || "Invalid or expired OTP. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-y-auto bg-[#f9f9ff] font-sans text-[#141b2b] antialiased">
-      {/* ================= BACKGROUND IMAGE ================= */}
-      <div
-        className="fixed inset-0 z-0 scale-105 bg-cover bg-center bg-no-repeat blur-[2px]"
-        style={{
-          backgroundImage: "url('/register.png')",
-        }}
-      />
+      <div className="relative min-h-screen w-full overflow-y-auto bg-[#f9f9ff] font-sans text-[#141b2b] antialiased">
+        <div className="fixed inset-0 z-0 scale-105 bg-cover bg-center bg-no-repeat blur-[2px]" style={{ backgroundImage: "url('/register.png')" }} />
+        <div className="fixed inset-0 z-0 bg-white/10" />
+        <div className="pointer-events-none fixed left-[-10%] top-[-10%] z-0 h-[40%] w-[40%] rounded-full bg-[#1798D7]/10 blur-[100px]" />
+        <div className="pointer-events-none fixed bottom-[-10%] right-[-10%] z-0 h-[40%] w-[40%] rounded-full bg-[#09D66D]/10 blur-[100px]" />
 
-      {/* ================= HAZY WHITE OVERLAY ================= */}
-      <div className="fixed inset-0 z-0 bg-white/10" />
+        <main className="relative z-10 flex min-h-screen w-full flex-col items-center justify-start px-4 pt-2 pb-8 md:pt-3">
+          <div className="mx-auto flex w-full max-w-xl flex-col items-center">
 
-      {/* ================= TOP BLUE GLOW ================= */}
-      <div className="pointer-events-none fixed left-[-10%] top-[-10%] z-0 h-[40%] w-[40%] rounded-full bg-[#1798D7]/10 blur-[100px]" />
-
-      {/* ================= BOTTOM GREEN GLOW ================= */}
-      <div className="pointer-events-none fixed bottom-[-10%] right-[-10%] z-0 h-[40%] w-[40%] rounded-full bg-[#09D66D]/10 blur-[100px]" />
-
-      {/* ================= MAIN CONTENT ================= */}
-      <main className="relative z-10 flex min-h-screen w-full flex-col items-center justify-start px-4 pt-2 pb-8 md:pt-3">
-        <div className="mx-auto flex w-full max-w-xl flex-col items-center">
-          
-          {/* ================= LOGO HEADER ================= */}
-          <div className="mb-2 flex flex-col items-center text-center">
-            <Link
-              to="/"
-              className="inline-flex h-14 cursor-pointer items-center justify-center overflow-hidden md:h-16"
-            >
-              <img
-                src="/logo1.png"
-                alt="Conduyt"
-                className="h-28 w-auto max-w-none translate-y-3 object-contain drop-shadow-[0_0_12px_rgba(255,255,255,0.95)] md:h-32"
-              />
-            </Link>
-
-            <p className="mt-1 text-xs font-semibold tracking-wide text-[#111827] md:text-sm">
-              The intelligent network for exceptional talent.
-            </p>
-          </div>
-
-          {/* ================= REGISTRATION CARD ================= */}
-          <div className="relative w-full overflow-hidden rounded-2xl border border-white/40 bg-white/80 p-5 shadow-xl backdrop-blur-xl md:p-6">
-            
-            {/* ================= PROGRESS INDICATOR ================= */}
-            <div className="mb-4 flex items-center justify-center">
-              <div className="flex items-center space-x-2 md:space-x-3">
-                {/* Step 1 Dot */}
-                <div className="h-2.5 w-2.5 rounded-full bg-[#00628e]" />
-
-                {/* Progress Bar 1 */}
-                <div className="h-1 w-8 overflow-hidden rounded-full bg-[#dce2f7] md:w-10">
-                  <div
-                    className="h-full bg-[#00628e] transition-all duration-500 ease-out"
-                    style={{ width: step >= 2 ? "100%" : "0%" }}
-                  />
-                </div>
-
-                {/* Step 2 Dot */}
-                <div
-                  className={`h-2.5 w-2.5 rounded-full transition-colors duration-300 ${
-                    step >= 2 ? "bg-[#00628e]" : "bg-[#dce2f7]"
-                  }`}
-                />
-
-                {/* Progress Bar 2 */}
-                <div className="h-1 w-8 overflow-hidden rounded-full bg-[#dce2f7] md:w-10">
-                  <div
-                    className="h-full bg-[#00628e] transition-all duration-500 ease-out"
-                    style={{ width: step === 3 ? "100%" : "0%" }}
-                  />
-                </div>
-
-                {/* Step 3 Dot */}
-                <div
-                  className={`h-2.5 w-2.5 rounded-full transition-colors duration-300 ${
-                    step === 3 ? "bg-[#00628e]" : "bg-[#dce2f7]"
-                  }`}
-                />
-              </div>
+            {/* HEADER */}
+            <div className="mb-2 flex flex-col items-center text-center">
+              <Link to="/" className="inline-flex h-14 cursor-pointer items-center justify-center overflow-hidden md:h-16">
+                <img src="/logo1.png" alt="Conduyt" className="h-28 w-auto max-w-none translate-y-3 object-contain drop-shadow-[0_0_12px_rgba(255,255,255,0.95)] md:h-32" />
+              </Link>
+              <p className="mt-1 text-xs font-semibold tracking-wide text-[#111827] md:text-sm">
+                The intelligent network for exceptional talent.
+              </p>
             </div>
 
-            {/* ==================================================
-                STEP 1: PERSONAL DETAILS
-            ================================================== */}
-            {step === 1 && (
-              <div className="mx-auto w-full max-w-md">
-                <div className="mb-4 text-center">
-                  <h2 className="text-xl font-bold text-[#141b2b] md:text-2xl">
-                    Create Your Account
-                  </h2>
-                  <p className="mt-0.5 text-xs text-[#3f4850] md:text-sm">
-                    Enter your contact & account details to get started.
-                  </p>
-                </div>
+            <div className="relative w-full overflow-visible rounded-2xl border border-white/40 bg-white/80 p-5 shadow-xl backdrop-blur-xl md:p-6">
 
-                <div className="space-y-3">
-
-                  {/* PROFILE PICTURE UPLOAD */}
-                  <div className="flex flex-col items-center justify-center">
-                    <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                      Profile Picture
-                    </label>
-                    <div className="relative group flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-gray-300 bg-white transition-all hover:border-[#00628e]">
-                      {profilePreview ? (
-                        <img
-                          src={profilePreview}
-                          alt="Profile Preview"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-center">
-                          <span className="text-xl">📷</span>
-                          <span className="text-[10px] text-gray-500">Upload</span>
-                        </div>
-                      )}
-                      <input
-                        type="file"
-                        name="profilePicture"
-                        accept="image/*"
-                        onChange={handleChange}
-                        className="absolute inset-0 cursor-pointer opacity-0"
-                      />
+              {/* PROGRESS BARS */}
+              {step < 4 && (
+                  <div className="mb-4 flex items-center justify-center">
+                    <div className="flex items-center space-x-2 md:space-x-3">
+                      <div className="h-2.5 w-2.5 rounded-full bg-[#00628e]" />
+                      <div className="h-1 w-8 overflow-hidden rounded-full bg-[#dce2f7] md:w-10">
+                        <div className="h-full bg-[#00628e] transition-all duration-500 ease-out" style={{ width: step >= 2 ? "100%" : "0%" }} />
+                      </div>
+                      <div className={`h-2.5 w-2.5 rounded-full transition-colors duration-300 ${step >= 2 ? "bg-[#00628e]" : "bg-[#dce2f7]"}`} />
+                      <div className="h-1 w-8 overflow-hidden rounded-full bg-[#dce2f7] md:w-10">
+                        <div className="h-full bg-[#00628e] transition-all duration-500 ease-out" style={{ width: step === 3 ? "100%" : "0%" }} />
+                      </div>
+                      <div className={`h-2.5 w-2.5 rounded-full transition-colors duration-300 ${step === 3 ? "bg-[#00628e]" : "bg-[#dce2f7]"}`} />
                     </div>
                   </div>
+              )}
 
-                  {/* Name Grid */}
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-                    <div>
-                      <label htmlFor="firstName" className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                        First Name *
-                      </label>
-                      <input
-                        id="firstName"
-                        name="firstName"
-                        type="text"
-                        placeholder="John"
-                        value={formData.firstName}
-                        onChange={handleChange}
-                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs transition-all focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
-                      />
+              {/* STEP 1: PERSONAL DETAILS */}
+              {step === 1 && (
+                  <div className="mx-auto w-full max-w-md">
+                    <div className="mb-4 text-center">
+                      <h2 className="text-xl font-bold text-[#141b2b] md:text-2xl">Create Your Account</h2>
+                      <p className="mt-0.5 text-xs text-[#3f4850] md:text-sm">Enter your details to get started.</p>
                     </div>
-                    <div>
-                      <label htmlFor="middleName" className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                        Middle Name
-                      </label>
-                      <input
-                        id="middleName"
-                        name="middleName"
-                        type="text"
-                        placeholder="M."
-                        value={formData.middleName}
-                        onChange={handleChange}
-                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs transition-all focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="lastName" className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                        Last Name *
-                      </label>
-                      <input
-                        id="lastName"
-                        name="lastName"
-                        type="text"
-                        placeholder="Doe"
-                        value={formData.lastName}
-                        onChange={handleChange}
-                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs transition-all focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
-                      />
-                    </div>
-                  </div>
 
-                  {/* Email */}
-                  <div>
-                    <label htmlFor="email" className="mb-1 block text-xs font-semibold text-[#141b2b] md:text-sm">
-                      Email Address *
-                    </label>
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="john@example.com"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs transition-all focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20 md:text-sm"
-                    />
-                  </div>
-
-                  {/* Password */}
-                  <div>
-                    <label htmlFor="password" className="mb-1 block text-xs font-semibold text-[#141b2b] md:text-sm">
-                      Password *
-                    </label>
-                    <input
-                      id="password"
-                      name="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={formData.password}
-                      onChange={handleChange}
-                      className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs transition-all focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20 md:text-sm"
-                    />
-                  </div>
-
-                  {/* Confirm Password */}
-                  <div>
-                    <label htmlFor="confirmPassword" className="mb-1 block text-xs font-semibold text-[#141b2b] md:text-sm">
-                      Re-enter Password *
-                    </label>
-                    <input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      placeholder="••••••••"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs transition-all focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20 md:text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-5">
-                  <button
-                    type="button"
-                    onClick={handleStep1Continue}
-                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#1798D7] to-[#4AB7B2] py-2.5 text-xs font-bold text-white shadow-md shadow-[#1798D7]/20 transition-all duration-300 hover:from-[#004f73] hover:to-[#1798D7] hover:shadow-lg active:scale-[0.99] md:text-sm"
-                  >
-                    Continue
-                    <span className="text-base">→</span>
-                  </button>
-                </div>
-
-                <div className="mt-3 text-center">
-                  <p className="text-xs text-[#3f4850] md:text-sm">
-                    Already have an account?{" "}
-                    <Link to="/login" className="cursor-pointer font-semibold text-[#00628e] hover:underline">
-                      Log in
-                    </Link>
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* ==================================================
-                STEP 2: MODE SELECTION
-            ================================================== */}
-            {step === 2 && (
-              <div className="w-full">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="mb-3 flex cursor-pointer items-center gap-1 text-xs font-medium text-[#3f4850] transition-colors hover:text-[#00628e]"
-                >
-                  ← Back
-                </button>
-
-                <div className="mb-4 text-center">
-                  <h2 className="mb-1 text-xl font-bold md:text-2xl">Choose Your Path</h2>
-                  <p className="mx-auto max-w-sm text-xs text-[#3f4850] md:text-sm">
-                    Select how you want to use Conduyt.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {/* FREELANCER CARD */}
-                  <div
-                    onClick={() => handlePersonaSelect("freelancer")}
-                    className={`relative cursor-pointer rounded-xl ${
-                      selectedPersona === "freelancer" ? "ring-2 ring-[#1798D7]" : ""
-                    }`}
-                  >
-                    <div className="group flex h-full flex-col items-center rounded-xl border border-gray-200 bg-white p-4 text-center transition-all duration-300 hover:-translate-y-0.5 hover:border-[#1798D7] hover:shadow-md">
-                      <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#e9edff] text-xl text-[#1798D7]">
-                        💻
-                      </div>
-                      <h3 className="mb-1 text-sm font-bold text-[#141b2b]">Freelancer Mode</h3>
-                      <p className="mb-3 flex-grow text-xs text-[#3f4850]">
-                        Find projects, leverage AI matching, and showcase your developer profile.
-                      </p>
-                      <div className="w-full cursor-pointer rounded-md border border-gray-200 py-1.5 text-xs font-semibold text-[#00628e] transition-colors duration-300 group-hover:border-transparent group-hover:bg-[#1798D7] group-hover:text-white">
-                        Select Freelancer
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* CLIENT CARD */}
-                  <div
-                    onClick={() => handlePersonaSelect("client")}
-                    className={`relative cursor-pointer rounded-xl ${
-                      selectedPersona === "client" ? "ring-2 ring-[#09D66D]" : ""
-                    }`}
-                  >
-                    <div className="group flex h-full flex-col items-center rounded-xl border border-gray-200 bg-white p-4 text-center transition-all duration-300 hover:-translate-y-0.5 hover:border-[#09D66D] hover:shadow-md">
-                      <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#e9edff] text-xl text-[#09D66D]">
-                        🏢
-                      </div>
-                      <h3 className="mb-1 text-sm font-bold text-[#141b2b]">Client Mode</h3>
-                      <p className="mb-3 flex-grow text-xs text-[#3f4850]">
-                        Hire top-tier talent quickly as an individual or scale up with your company.
-                      </p>
-                      <div className="w-full cursor-pointer rounded-md border border-gray-200 py-1.5 text-xs font-semibold text-[#00628e] transition-colors duration-300 group-hover:border-transparent group-hover:bg-[#09D66D] group-hover:text-white">
-                        Select Client
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ==================================================
-                STEP 3: PROFILE / ROLE DETAILS
-            ================================================== */}
-            {step === 3 && (
-              <div className="mx-auto w-full max-w-md">
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="mb-3 flex cursor-pointer items-center gap-1 text-xs font-medium text-[#3f4850] transition-colors hover:text-[#00628e]"
-                >
-                  ← Back to Mode Selection
-                </button>
-
-                <form onSubmit={handleSubmit} className="space-y-3">
-                  {/* FREELANCER SPECIFIC FIELDS */}
-                  {selectedPersona === "freelancer" && (
-                    <>
-                      <div className="mb-2 text-center">
-                        <h2 className="text-xl font-bold text-[#141b2b]">Freelancer Profile Details</h2>
-                        <p className="text-xs text-[#3f4850]">Highlight your expertise for top clients.</p>
-                      </div>
-
-                      {/* Professional Title */}
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                          Professional Title *
-                        </label>
-                        <input
-                          name="title"
-                          type="text"
-                          required
-                          placeholder='e.g. "Full-Stack Java & React Developer"'
-                          value={formData.title}
-                          onChange={handleChange}
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs transition-all focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
-                        />
-                      </div>
-
-                      {/* Bio */}
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                          Bio / Introduction *
-                        </label>
-                        <textarea
-                          name="bio"
-                          required
-                          rows="3"
-                          placeholder="Tell clients about your background, strengths, and experience..."
-                          value={formData.bio}
-                          onChange={handleChange}
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs transition-all focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
-                        />
-                      </div>
-
-                      {/* Links */}
-                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                        <div>
-                          <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                            GitHub Link *
-                          </label>
-                          <input
-                            name="githubUrl"
-                            type="url"
-                            required
-                            placeholder="https://github.com/username"
-                            value={formData.githubUrl}
-                            onChange={handleChange}
-                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs transition-all focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                            LinkedIn Link *
-                          </label>
-                          <input
-                            name="linkedinUrl"
-                            type="url"
-                            required
-                            placeholder="https://linkedin.com/in/username"
-                            value={formData.linkedinUrl}
-                            onChange={handleChange}
-                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs transition-all focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                          Portfolio Website (Optional)
-                        </label>
-                        <input
-                          name="portfolioUrl"
-                          type="url"
-                          placeholder="https://yourportfolio.com"
-                          value={formData.portfolioUrl}
-                          onChange={handleChange}
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs transition-all focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
-                        />
-                      </div>
-
-                      {/* Resume PDF */}
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                          CV or Resume (PDF Format) *
-                        </label>
-                        <input
-                          name="resumeFile"
-                          type="file"
-                          accept=".pdf"
-                          required
-                          onChange={handleChange}
-                          className="w-full cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs file:cursor-pointer file:mr-3 file:rounded-md file:border-0 file:bg-[#1798D7]/10 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-[#1798D7] hover:file:bg-[#1798D7]/20"
-                        />
-                      </div>
-
-                      {/* Skill Tags */}
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                          Skill Tags
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder='Add a skill (e.g. "React", "Java", "NextJs")'
-                            value={skillInput}
-                            onChange={(e) => setSkillInput(e.target.value)}
-                            className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-xs focus:border-[#00628e] focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleAddSkill}
-                            className="cursor-pointer rounded-lg bg-[#00628e] px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#004f73]"
-                          >
-                            Add
-                          </button>
-                        </div>
-                        
-                        {/* Display Added Skill Tags */}
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {skills.length === 0 ? (
-                            <p className="text-[11px] italic text-[#6c757d]">
-                              No skills added yet. Type a skill above and click Add.
-                            </p>
+                    <div className="space-y-3">
+                      <div className="flex flex-col items-center justify-center">
+                        <label className="mb-1 block text-xs font-semibold text-[#141b2b]">Profile Picture *</label>
+                        <div className="relative group flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-gray-300 bg-white transition-all hover:border-[#00628e]">
+                          {profilePreview ? (
+                              <img src={profilePreview} alt="Preview" className="h-full w-full object-cover" />
                           ) : (
-                            skills.map((skill, idx) => (
-                              <span
-                                key={idx}
-                                className="inline-flex items-center gap-1 rounded-full bg-[#1798D7]/10 px-2.5 py-0.5 text-[11px] font-medium text-[#00628e]"
-                              >
-                                {skill}
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveSkill(skill)}
-                                  className="ml-0.5 cursor-pointer text-xs text-gray-500 hover:text-red-500"
-                                >
-                                  ×
-                                </button>
-                              </span>
-                            ))
+                              <div className="flex flex-col items-center justify-center text-center">
+                                <span className="text-xl">📷</span>
+                                <span className="text-[10px] text-gray-500">Upload</span>
+                              </div>
                           )}
+                          <input
+                              type="file"
+                              name="profileImage"
+                              accept="image/*"
+                              onChange={handleChange}
+                              className="absolute inset-0 cursor-pointer opacity-0"
+                          />
                         </div>
                       </div>
-                    </>
-                  )}
 
-                  {/* CLIENT SPECIFIC FIELDS */}
-                  {selectedPersona === "client" && (
-                    <>
-                      <div className="mb-2 text-center">
-                        <h2 className="text-xl font-bold text-[#141b2b]">Client Details</h2>
-                        <p className="text-xs text-[#3f4850]">Select client type and provide details.</p>
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-[#141b2b]">First Name *</label>
+                          <input
+                              name="firstName"
+                              type="text"
+                              placeholder="John"
+                              value={formData.firstName}
+                              onChange={handleChange}
+                              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-[#141b2b]">Middle Name</label>
+                          <input
+                              name="middleName"
+                              type="text"
+                              placeholder="M."
+                              value={formData.middleName}
+                              onChange={handleChange}
+                              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-[#141b2b]">Last Name *</label>
+                          <input
+                              name="lastName"
+                              type="text"
+                              placeholder="Doe"
+                              value={formData.lastName}
+                              onChange={handleChange}
+                              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
+                          />
+                        </div>
                       </div>
 
-                      {/* Client Type Selector */}
                       <div>
-                        <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                          Client Type *
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData((prev) => ({ ...prev, clientType: "INDIVIDUAL" }))
-                            }
-                            className={`cursor-pointer rounded-lg py-2 text-xs font-semibold transition-all ${
-                              formData.clientType === "INDIVIDUAL"
-                                ? "bg-[#09D66D] text-white shadow-sm"
-                                : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            Individual Client
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData((prev) => ({ ...prev, clientType: "COMPANY" }))
-                            }
-                            className={`cursor-pointer rounded-lg py-2 text-xs font-semibold transition-all ${
-                              formData.clientType === "COMPANY"
-                                ? "bg-[#09D66D] text-white shadow-sm"
-                                : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            Organization
-                          </button>
+                        <label className="mb-1 block text-xs font-semibold text-[#141b2b]">Email Address *</label>
+                        <input
+                            name="email"
+                            type="email"
+                            placeholder="john@example.com"
+                            value={formData.email}
+                            onChange={handleChange}
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-[#141b2b]">Password *</label>
+                        <input
+                            name="password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={formData.password}
+                            onChange={handleChange}
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-[#141b2b]">Re-enter Password *</label>
+                        <input
+                            name="confirmPassword"
+                            type="password"
+                            placeholder="••••••••"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs focus:border-[#00628e] focus:outline-none focus:ring-2 focus:ring-[#00628e]/20"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-5">
+                      <button
+                          type="button"
+                          onClick={handleStep1Continue}
+                          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#1798D7] to-[#4AB7B2] py-2.5 text-xs font-bold text-white shadow-md transition-all hover:opacity-90 md:text-sm"
+                      >
+                        Continue →
+                      </button>
+                    </div>
+                  </div>
+              )}
+
+              {/* STEP 2: MODE SELECTION */}
+              {step === 2 && (
+                  <div className="w-full">
+                    <button type="button" onClick={() => setStep(1)} className="mb-3 flex cursor-pointer text-xs font-medium text-[#3f4850] hover:text-[#00628e]">
+                      ← Back
+                    </button>
+                    <div className="mb-4 text-center">
+                      <h2 className="mb-1 text-xl font-bold md:text-2xl">Choose Your Path</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div onClick={() => handlePersonaSelect("freelancer")} className="cursor-pointer">
+                        <div className="group flex h-full flex-col items-center rounded-xl border border-gray-200 bg-white p-4 text-center hover:border-[#1798D7] hover:shadow-md">
+                          <div className="mb-2 text-3xl">💻</div>
+                          <h3 className="mb-1 text-sm font-bold">Freelancer Mode</h3>
+                          <p className="text-xs text-[#3f4850] mb-3">Find projects and showcase your skills.</p>
+                          <div className="w-full rounded-md border border-gray-200 py-1.5 text-xs font-semibold text-[#00628e] group-hover:bg-[#1798D7] group-hover:text-white">
+                            Select Freelancer
+                          </div>
                         </div>
                       </div>
 
-                      {/* Conditional Company Details */}
-                      {formData.clientType === "COMPANY" && (
-                        <div className="mt-3 space-y-2 rounded-xl border border-gray-200/80 bg-white/50 p-3">
-                          <div>
-                            <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                              Company Name *
-                            </label>
-                            <input
-                              name="companyName"
-                              type="text"
-                              required
-                              placeholder="Acme Technologies Inc."
-                              value={formData.companyName}
-                              onChange={handleChange}
-                              className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-xs transition-all focus:border-[#09D66D] focus:outline-none"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                              Your Role in Company *
-                            </label>
-                            <input
-                              name="companyRole"
-                              type="text"
-                              required
-                              placeholder="e.g. HR Manager, Tech Lead, Founder"
-                              value={formData.companyRole}
-                              onChange={handleChange}
-                              className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-xs transition-all focus:border-[#09D66D] focus:outline-none"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                              Company Website URL *
-                            </label>
-                            <input
-                              name="companyWebsite"
-                              type="url"
-                              required
-                              placeholder="https://company.com"
-                              value={formData.companyWebsite}
-                              onChange={handleChange}
-                              className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-xs transition-all focus:border-[#09D66D] focus:outline-none"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                              Company Address *
-                            </label>
-                            <input
-                              name="companyAddress"
-                              type="text"
-                              required
-                              placeholder="123 Corporate Blvd, Suite 100"
-                              value={formData.companyAddress}
-                              onChange={handleChange}
-                              className="w-full rounded-lg border border-gray-200 bg-white px-3.5 py-1.5 text-xs transition-all focus:border-[#09D66D] focus:outline-none"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                            <div>
-                              <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                                Contact Number *
-                              </label>
-                              <input
-                                name="contactNumber"
-                                type="tel"
-                                required
-                                placeholder="+1 (555) 000-0000"
-                                value={formData.contactNumber}
-                                onChange={handleChange}
-                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs transition-all focus:border-[#09D66D] focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="mb-1 block text-xs font-semibold text-[#141b2b]">
-                                GSTIN *
-                              </label>
-                              <input
-                                name="gstin"
-                                type="text"
-                                required
-                                placeholder="22AAAAA0000A1Z5"
-                                value={formData.gstin}
-                                onChange={handleChange}
-                                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs transition-all focus:border-[#09D66D] focus:outline-none"
-                              />
-                            </div>
+                      <div onClick={() => handlePersonaSelect("client")} className="cursor-pointer">
+                        <div className="group flex h-full flex-col items-center rounded-xl border border-gray-200 bg-white p-4 text-center hover:border-[#09D66D] hover:shadow-md">
+                          <div className="mb-2 text-3xl">🏢</div>
+                          <h3 className="mb-1 text-sm font-bold">Client Mode</h3>
+                          <p className="text-xs text-[#3f4850] mb-3">Hire top-tier talent quickly.</p>
+                          <div className="w-full rounded-md border border-gray-200 py-1.5 text-xs font-semibold text-[#00628e] group-hover:bg-[#09D66D] group-hover:text-white">
+                            Select Client
                           </div>
                         </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* Submit Button */}
-                  <div className="mt-5">
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#1798D7] to-[#09D66D] py-2.5 text-xs font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                    >
-                      {isSubmitting ? "Registering..." : "Complete Registration"}
-                    </button>
+                      </div>
+                    </div>
                   </div>
-                </form>
-              </div>
-            )}
+              )}
+
+              {/* STEP 3: ROLE DETAILS */}
+              {step === 3 && (
+                  <div className="mx-auto w-full max-w-md">
+                    <button type="button" onClick={() => setStep(2)} className="mb-3 flex cursor-pointer text-xs font-medium text-[#3f4850] hover:text-[#00628e]">
+                      ← Back
+                    </button>
+
+                    <form onSubmit={handleRegistrationSubmit} className="space-y-3">
+
+                      {/* FREELANCER FIELDS */}
+                      {selectedPersona === "freelancer" && (
+                          <>
+                            <h2 className="text-xl font-bold text-center mb-4">Freelancer Details</h2>
+
+                            <input name="title" type="text" required placeholder="Professional Title *" value={formData.title} onChange={handleChange} className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-xs" />
+                            <textarea name="bio" required rows="3" placeholder="Bio / Introduction *" value={formData.bio} onChange={handleChange} className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-xs" />
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <input name="githubUrl" type="url" required placeholder="GitHub URL *" value={formData.githubUrl} onChange={handleChange} className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-xs" />
+                              <input name="linkedinUrl" type="url" required placeholder="LinkedIn URL *" value={formData.linkedinUrl} onChange={handleChange} className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-xs" />
+                            </div>
+
+                            <input name="portfolioUrl" type="url" placeholder="Portfolio Website (Optional)" value={formData.portfolioUrl} onChange={handleChange} className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-xs" />
+
+                            <div>
+                              <label className="mb-1 block text-xs font-semibold">CV / Resume (PDF) *</label>
+                              <input name="cvFile" type="file" accept=".pdf" required onChange={handleChange} className="w-full text-xs" />
+                            </div>
+
+                            {/* ========================================================= */}
+                            {/* FIXED SKILLS AUTOCOMPLETE WIDGET                          */}
+                            {/* ========================================================= */}
+                            <div className="relative pb-2">
+                              <label className="mb-1 block text-xs font-semibold">Skills</label>
+                              <div className="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    placeholder="Type to search or add a skill..."
+                                    value={skillInput}
+                                    onChange={(e) => {
+                                      setSkillInput(e.target.value);
+                                      setShowSuggestions(true);
+                                    }}
+                                    onFocus={() => setShowSuggestions(true)}
+                                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                    className="w-full rounded-lg border border-gray-200 px-3.5 py-1.5 text-xs focus:border-[#00628e] focus:outline-none"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAddSkill}
+                                    className="cursor-pointer rounded-lg bg-[#00628e] px-4 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#004f73]"
+                                >
+                                  Add
+                                </button>
+                              </div>
+
+                              {/* DROPDOWN MENU */}
+                              {showSuggestions && skillInput.trim().length > 0 && (
+                                  <div className="absolute top-14 left-0 z-[100] w-[calc(100%-80px)] bg-white border border-gray-300 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+
+                                    {/* Filtered DB Skills */}
+                                    {availableSkills
+                                        .filter((s) => s.label.toLowerCase().includes(skillInput.toLowerCase()) && !skills.includes(s.label))
+                                        .map((skill) => (
+                                            <div
+                                                key={skill.id}
+                                                className="px-4 py-2.5 text-xs font-medium cursor-pointer border-b border-gray-100 hover:bg-[#1798D7]/10 hover:text-[#00628e] transition-colors"
+                                                onClick={() => handleSelectSkill(skill.label)}
+                                            >
+                                              {skill.label}
+                                            </div>
+                                        ))}
+
+                                    {/* Add Custom Skill Option */}
+                                    {!availableSkills.some(s => s.label.toLowerCase() === skillInput.toLowerCase()) && (
+                                        <div
+                                            className="px-4 py-2.5 text-xs font-bold cursor-pointer text-[#00628e] bg-gray-50 hover:bg-[#1798D7]/10 transition-colors"
+                                            onClick={handleAddSkill}
+                                        >
+                                          + Add "{skillInput}" as custom skill
+                                        </div>
+                                    )}
+                                  </div>
+                              )}
+
+                              {/* SKILL CHIPS */}
+                              <div className="flex flex-wrap gap-1.5 min-h-[24px]">
+                                {skills.length === 0 ? (
+                                    <span className="text-[11px] text-gray-400 italic">No skills added yet.</span>
+                                ) : (
+                                    skills.map((skill, idx) => (
+                                        <span key={idx} className="inline-flex items-center gap-1.5 rounded-full bg-[#1798D7]/10 pl-3 pr-2 py-1 text-xs font-semibold text-[#00628e] border border-[#1798D7]/20">
+                                {skill}
+                                          <button type="button" onClick={() => handleRemoveSkill(skill)} className="cursor-pointer text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full h-4 w-4 flex items-center justify-center">×</button>
+                              </span>
+                                    ))
+                                )}
+                              </div>
+                            </div>
+                          </>
+                      )}
+
+                      {/* CLIENT FIELDS */}
+                      {selectedPersona === "client" && (
+                          <>
+                            <h2 className="text-xl font-bold text-center mb-4">Client Details</h2>
+
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                              <button type="button" onClick={() => setFormData(prev => ({...prev, clientType: "INDIVIDUAL"}))} className={`cursor-pointer py-2 text-xs font-bold rounded-lg ${formData.clientType === "INDIVIDUAL" ? "bg-[#09D66D] text-white" : "border"}`}>Individual</button>
+                              <button type="button" onClick={() => setFormData(prev => ({...prev, clientType: "COMPANY"}))} className={`cursor-pointer py-2 text-xs font-bold rounded-lg ${formData.clientType === "COMPANY" ? "bg-[#09D66D] text-white" : "border"}`}>Company</button>
+                            </div>
+
+                            <input name="contactNumber" type="tel" required placeholder="Contact Number *" value={formData.contactNumber} onChange={handleChange} className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-xs" />
+
+                            {formData.clientType === "COMPANY" && (
+                                <div className="space-y-2 mt-2 p-3 bg-gray-50 rounded-lg border">
+                                  <div className="mb-2">
+                                    <label className="mb-1 block text-xs font-semibold">Company Logo (Optional)</label>
+                                    <input name="companyLogo" type="file" accept="image/*" onChange={handleChange} className="w-full text-xs" />
+                                  </div>
+                                  <input name="companyName" type="text" required placeholder="Company Name *" value={formData.companyName} onChange={handleChange} className="w-full rounded-lg border px-3 py-1.5 text-xs" />
+                                  <input name="companyRole" type="text" required placeholder="Your Role *" value={formData.companyRole} onChange={handleChange} className="w-full rounded-lg border px-3 py-1.5 text-xs" />
+                                  <input name="companyWebsite" type="url" required placeholder="Website URL *" value={formData.companyWebsite} onChange={handleChange} className="w-full rounded-lg border px-3 py-1.5 text-xs" />
+                                  <input name="companyAddress" type="text" required placeholder="Address *" value={formData.companyAddress} onChange={handleChange} className="w-full rounded-lg border px-3 py-1.5 text-xs" />
+                                  <input name="gstin" type="text" required placeholder="GSTIN *" value={formData.gstin} onChange={handleChange} className="w-full rounded-lg border px-3 py-1.5 text-xs" />
+                                </div>
+                            )}
+                          </>
+                      )}
+
+                      <button type="submit" disabled={isSubmitting} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#1798D7] to-[#09D66D] py-3 mt-4 text-sm font-bold text-white shadow-md disabled:opacity-50">
+                        {isSubmitting ? "Registering..." : "Complete Registration"}
+                      </button>
+                    </form>
+                  </div>
+              )}
+
+              {/* STEP 4: OTP VERIFICATION */}
+              {step === 4 && (
+                  <div className="mx-auto w-full max-w-md text-center py-4">
+                    <div className="mb-6">
+                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#1798D7]/10 text-3xl mb-3">✉️</div>
+                      <h2 className="text-xl font-bold text-[#141b2b] md:text-2xl">Verify Your Email</h2>
+                      <p className="mt-2 text-xs text-[#3f4850] md:text-sm">We've sent a 6-digit code to <span className="font-bold text-[#00628e]">{formData.email}</span>.</p>
+                    </div>
+
+                    <form onSubmit={handleVerifyOtp} className="space-y-4">
+                      <div>
+                        <input id="otp" type="text" maxLength={6} placeholder="Enter 6-digit OTP" value={otp} onChange={(e) => setOtp(e.target.value)} required className="block w-full py-3 px-4 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 text-center tracking-[0.5em] text-lg font-mono focus:outline-none focus:border-[#00628e] focus:ring-2 focus:ring-[#00628e]/20 focus:bg-white transition-all" />
+                      </div>
+                      <button type="submit" disabled={isSubmitting || otp.length < 6} className="w-full flex justify-center py-3 px-4 rounded-lg text-white bg-gradient-to-r from-[#1798D7] to-[#4AB7B2] hover:opacity-90 font-bold transition-all disabled:opacity-50 cursor-pointer shadow-md">
+                        {isSubmitting ? "Verifying..." : "Verify & Activate Account"}
+                      </button>
+                    </form>
+                  </div>
+              )}
+            </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
   );
 }
 

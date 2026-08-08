@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate, useOutletContext } from "react-router-dom"; // <-- Added Router hooks
 import {
   Building2,
   MapPin,
@@ -13,156 +14,193 @@ import {
   Briefcase,
 } from "lucide-react";
 
-export default function ClientProfileView({
-  profileData,
-  companyData,
-  clientType,
-  onEditProfile,
-}) {
-  const fullName = `${profileData?.firstName || "Client"} ${
-    profileData?.middleName ? profileData.middleName + " " : ""
+export default function ClientProfileView() {
+  const navigate = useNavigate();
+
+  // Grab shared data directly from the Dashboard Layout Wrapper
+  const { profileData, companyData, clientType } = useOutletContext();
+
+  const fullName = `${profileData?.firstName || "Client User"} ${
+      profileData?.middleName ? profileData.middleName + " " : ""
   }${profileData?.lastName || ""}`.trim();
 
-  return (
-    <div className="max-w-4xl space-y-6">
-      {/* HEADER BAR */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-[#141b2b]">Profile</h1>
-         
-        </div>
-        <button
-          onClick={onEditProfile}
-          className="flex cursor-pointer items-center gap-2 rounded-lg bg-gradient-to-r from-[#09D66D] to-[#4AB7B2] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
-        >
-          <Edit size={16} /> Edit Details
-        </button>
-      </div>
+  const isCompany = clientType === "company" || clientType === "COMPANY";
 
-      {/* PROFILE CARD */}
-      <div className="space-y-6 rounded-xl border border-[#09D66D]/20 bg-white p-6 shadow-sm md:p-8">
-        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-          <div className="flex items-center gap-5">
+  return (
+      <div className="max-w-4xl space-y-6">
+
+        {/* ================= HEADER BAR ================= */}
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              View your personal and organizational details.
+            </p>
+          </div>
+          <button
+              // 🚀 ROUTER FIX: Navigate directly to the edit form
+              onClick={() => navigate("/dashboard/personal")}
+              className="flex cursor-pointer items-center gap-2 rounded-lg bg-white border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:border-[#09D66D] hover:text-[#09D66D] hover:bg-gray-50 active:scale-95"
+          >
+            <Edit size={16} /> Edit Details
+          </button>
+        </div>
+
+        {/* ================= MAIN PROFILE CARD ================= */}
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
+
+          {/* TOP SECTION: Avatar & Titles */}
+          <div className="flex flex-col items-start gap-6 md:flex-row md:items-center">
+
             {/* AVATAR */}
-            <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[#09D66D] bg-[#09D66D]/10 text-[#09D66D]">
+            <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-50 p-1">
               {profileData?.profilePic ? (
-                <img
-                  src={profileData.profilePic}
-                  alt={fullName}
-                  className="h-full w-full object-cover"
-                />
+                  <img
+                      src={profileData.profilePic}
+                      alt={fullName}
+                      className="h-full w-full rounded-full object-cover"
+                  />
               ) : (
-                <User size={40} />
+                  <div className="flex h-full w-full rounded-full items-center justify-center bg-gray-100 text-gray-400">
+                    <User size={32} />
+                  </div>
               )}
             </div>
 
-            {/* NAME & ROLE */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-bold text-[#141b2b]">{fullName}</h2>
-                <span className="flex items-center gap-1 rounded-full bg-[#09D66D]/15 px-2.5 py-0.5 text-xs font-semibold text-[#09D66D]">
-                  <CheckCircle2 size={13} /> Verified Client
-                </span>
+            {/* NAME & BADGES */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold text-gray-900">{fullName}</h2>
+                <span className="flex items-center gap-1 rounded-md border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#09D66D]">
+                <CheckCircle2 size={12} strokeWidth={2.5} /> Verified
+              </span>
               </div>
+
               <p className="text-sm font-medium text-gray-600">
-                {clientType === "company" || clientType === "COMPANY"
-                  ? companyData?.companyName || "Company Account"
-                  : "Individual Client"}
+                {isCompany ? companyData?.companyName || "Company Account" : "Individual Client"}
               </p>
-              <p className="flex items-center gap-1 pt-1 text-xs text-gray-400">
-                <Calendar size={13} className="text-[#09D66D]" /> Member since 2026
+
+              <p className="flex items-center gap-1.5 pt-0.5 text-xs font-medium text-gray-400">
+                <Calendar size={14} className="text-gray-400" /> Member since 2026
               </p>
             </div>
           </div>
-        </div>
 
-        <hr className="border-gray-100" />
+          <hr className="my-8 border-gray-100" />
 
-        {/* DETAILS GRID */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {/* PERSONAL INFO */}
-          <div className="space-y-4">
-            <h3 className="border-b border-gray-100 pb-2 text-base font-bold text-[#141b2b]">
-              Personal Information
-            </h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center gap-3 text-gray-600">
-                <Mail size={16} className="text-[#09D66D]" />
-                <span>{profileData?.email || "No email provided"}</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-600">
-                <User size={16} className="text-[#09D66D]" />
-                <span className="capitalize">
-                  Account Type: <strong>{clientType || "Individual"}</strong>
-                </span>
-              </div>
-            </div>
-          </div>
+          {/* ================= DETAILS GRID ================= */}
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
 
-          {/* COMPANY INFO (IF COMPANY TYPE) */}
-          {(clientType === "company" || clientType === "COMPANY") && (
-            <div className="space-y-4">
-              <h3 className="border-b border-gray-100 pb-2 text-base font-bold text-[#141b2b]">
-                Company Information
+            {/* PERSONAL INFO COLUMN */}
+            <div className="space-y-5">
+              <h3 className="border-b border-gray-100 pb-2 text-xs font-bold uppercase tracking-wider text-gray-400">
+                Personal Information
               </h3>
-              <div className="space-y-3 text-sm">
-                {/* Company Name */}
-                <div className="flex items-center gap-3 text-gray-600">
-                  <Building2 size={16} className="text-[#09D66D]" />
-                  <span>{companyData?.companyName || "Not set"}</span>
+
+              <div className="space-y-4 text-sm">
+                <div className="flex items-start gap-3">
+                  <Mail size={18} className="mt-0.5 text-gray-400" />
+                  <div>
+                    <p className="text-xs font-medium text-gray-400">Email Address</p>
+                    <p className="font-medium text-gray-900">{profileData?.email || "No email provided"}</p>
+                  </div>
                 </div>
 
-                {/* Company Role */}
-                {companyData?.companyRole && (
-                  <div className="flex items-center gap-3 text-gray-600">
-                    <Briefcase size={16} className="text-[#09D66D]" />
-                    <span>Role: {companyData.companyRole}</span>
+                <div className="flex items-start gap-3">
+                  <User size={18} className="mt-0.5 text-gray-400" />
+                  <div>
+                    <p className="text-xs font-medium text-gray-400">Account Type</p>
+                    <p className="font-medium text-gray-900 capitalize">{clientType || "Individual"}</p>
                   </div>
-                )}
-
-                {/* Website */}
-                {companyData?.companyWebsite && (
-                  <div className="flex items-center gap-3 text-gray-600">
-                    <Globe size={16} className="text-[#09D66D]" />
-                    <a
-                      href={companyData.companyWebsite}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[#09D66D] hover:underline"
-                    >
-                      {companyData.companyWebsite}
-                    </a>
-                  </div>
-                )}
-
-                {/* Contact Number */}
-                {companyData?.contactNumber && (
-                  <div className="flex items-center gap-3 text-gray-600">
-                    <Phone size={16} className="text-[#09D66D]" />
-                    <span>{companyData.contactNumber}</span>
-                  </div>
-                )}
-
-                {/* GSTIN */}
-                {companyData?.gstin && (
-                  <div className="flex items-center gap-3 text-gray-600 font-mono">
-                    <FileText size={16} className="text-[#09D66D]" />
-                    <span>GSTIN: {companyData.gstin}</span>
-                  </div>
-                )}
-
-                {/* Address */}
-                {companyData?.companyAddress && (
-                  <div className="flex items-start gap-3 text-gray-600">
-                    <MapPin size={16} className="mt-0.5 text-[#09D66D]" />
-                    <span>{companyData.companyAddress}</span>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
-          )}
+
+            {/* COMPANY INFO COLUMN (Only shows if they are a company) */}
+            {isCompany && (
+                <div className="space-y-5">
+                  <h3 className="border-b border-gray-100 pb-2 text-xs font-bold uppercase tracking-wider text-gray-400">
+                    Company Information
+                  </h3>
+
+                  <div className="space-y-4 text-sm">
+
+                    {/* Company Name */}
+                    <div className="flex items-start gap-3">
+                      <Building2 size={18} className="mt-0.5 text-gray-400" />
+                      <div>
+                        <p className="text-xs font-medium text-gray-400">Organization</p>
+                        <p className="font-medium text-gray-900">{companyData?.companyName || "Not set"}</p>
+                      </div>
+                    </div>
+
+                    {/* Company Role */}
+                    {companyData?.companyRole && (
+                        <div className="flex items-start gap-3">
+                          <Briefcase size={18} className="mt-0.5 text-gray-400" />
+                          <div>
+                            <p className="text-xs font-medium text-gray-400">Your Role</p>
+                            <p className="font-medium text-gray-900">{companyData.companyRole}</p>
+                          </div>
+                        </div>
+                    )}
+
+                    {/* Website */}
+                    {companyData?.companyWebsite && (
+                        <div className="flex items-start gap-3">
+                          <Globe size={18} className="mt-0.5 text-gray-400" />
+                          <div>
+                            <p className="text-xs font-medium text-gray-400">Website</p>
+                            <a
+                                href={companyData.companyWebsite}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-medium text-[#09D66D] hover:underline cursor-pointer"
+                            >
+                              {companyData.companyWebsite}
+                            </a>
+                          </div>
+                        </div>
+                    )}
+
+                    {/* Contact Number */}
+                    {companyData?.contactNumber && (
+                        <div className="flex items-start gap-3">
+                          <Phone size={18} className="mt-0.5 text-gray-400" />
+                          <div>
+                            <p className="text-xs font-medium text-gray-400">Contact Number</p>
+                            <p className="font-medium text-gray-900">{companyData.contactNumber}</p>
+                          </div>
+                        </div>
+                    )}
+
+                    {/* GSTIN */}
+                    {companyData?.gstin && (
+                        <div className="flex items-start gap-3">
+                          <FileText size={18} className="mt-0.5 text-gray-400" />
+                          <div>
+                            <p className="text-xs font-medium text-gray-400">Tax ID (GSTIN)</p>
+                            <p className="font-mono font-medium text-gray-900">{companyData.gstin}</p>
+                          </div>
+                        </div>
+                    )}
+
+                    {/* Address */}
+                    {companyData?.companyAddress && (
+                        <div className="flex items-start gap-3">
+                          <MapPin size={18} className="mt-0.5 text-gray-400" />
+                          <div>
+                            <p className="text-xs font-medium text-gray-400">Headquarters</p>
+                            <p className="font-medium text-gray-900 leading-snug">{companyData.companyAddress}</p>
+                          </div>
+                        </div>
+                    )}
+
+                  </div>
+                </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
   );
 }

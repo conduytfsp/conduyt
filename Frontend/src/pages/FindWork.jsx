@@ -3,7 +3,7 @@ import SearchBar from "../components/SearchBar";
 import FilterSidebar from "../components/FilterSidebar";
 import JobList from "../components/JobList";
 import JobModal from "../components/JobModal";
-import PublicNavbar from "../components/layout/PublicNavbar";
+import Navbar from "../components/Navbar.jsx";
 import jobs from "../data/jobs";
 
 function FindWork() {
@@ -74,7 +74,7 @@ function FindWork() {
 
   return (
     <>
-    <PublicNavbar />
+    <Navbar />
     <div className="min-h-screen bg-gradient-to-br from-white via-blue-50 to-slate-100 px-6 py-5">
 
       {/* Hero Section */}

@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import PublicNavbar from '../components/layout/PublicNavbar'
+import Navbar from '../components/Navbar.jsx'
 import Button from "../components/ui/Button"
 import { NavLink } from 'react-router'
 import Footer from '../components/layout/Footer'
@@ -8,7 +8,7 @@ function LandingLayout() {
   return (
     <div className="min-h-screen flex flex-col justify-between">
       <div>
-        <PublicNavbar />
+        <Navbar />
 
         <section className="w-full py-20">
           <div className="bg-gray-200 w-40 max-w-7xl mx-auto rounded-full text-center">

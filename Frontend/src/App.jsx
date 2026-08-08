@@ -8,6 +8,7 @@ import FreelancerDashboard from "./pages/FreelancerDashboard";
 import ClientDashboard from "./pages/ClientDashboard";
 import Help from "./pages/Help";
 import FindWork from "./pages/FindWork";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
         />
         {/* Freelancer Page */}
          <Route path="/freelancerdashboard/*" element={<FreelancerDashboard />} />
+          <Route path="/dashboard/*" element={<Dashboard />} />
       </Routes>
     </Router>
   );
