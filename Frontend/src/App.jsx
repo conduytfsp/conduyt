@@ -9,6 +9,7 @@ import ClientDashboard from "./pages/ClientDashboard";
 import Help from "./pages/Help";
 import FindWork from "./pages/FindWork";
 import Dashboard from "./pages/Dashboard";
+import ProfileView from "./pages/ProfileView";
 
 function App() {
   return (
@@ -35,6 +36,9 @@ function App() {
         {/* Freelancer Page */}
          <Route path="/freelancerdashboard/*" element={<FreelancerDashboard />} />
           <Route path="/dashboard/*" element={<Dashboard />} />
+
+        {/* {ProfileView} */}
+        <Route path="/profileView/*" element={<ProfileView />} />
       </Routes>
     </Router>
   );
