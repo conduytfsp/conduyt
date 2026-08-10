@@ -22,17 +22,26 @@ export function useAxiosInstance() {
     }, [navigate]);
 
     const axiosInstance = useMemo(() => {
-        // 1. Create the base instance with baseURL matching your /api proxy & rewrites
+        // 1. Create the base instance
         const instance = axios.create({
             baseURL: '/api',
             timeout: 60000,
             withCredentials: true, // CRITICAL: Ensures Cookies (JWT & XSRF) are sent/received
         });
 
-        // 2. Request Interceptor: Handle CSRF Token
+        // 2. Request Interceptor: Handle URL Normalization & CSRF Token
         instance.interceptors.request.use((config) => {
-            const xsrfToken = getCookie('XSRF-TOKEN');
+            // BULLETPROOF FIX: Prevent double /api/api/ if components request '/api/...'
+            if (config.url) {
+                if (config.url.startsWith('/api/')) {
+                    config.url = config.url.replace(/^\/api/, '');
+                } else if (config.url === '/api') {
+                    config.url = '';
+                }
+            }
 
+            // Attach CSRF Token for non-GET requests
+            const xsrfToken = getCookie('XSRF-TOKEN');
             if (xsrfToken) {
                 config.headers['X-XSRF-TOKEN'] = xsrfToken;
             }
