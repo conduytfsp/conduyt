@@ -30,6 +30,9 @@ public class Job {
     @Column(nullable = false)
     private String title;
 
+    @Column (nullable = false)
+    private String contactNo;
+
     // Markdown-enabled detailed job description
     @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
@@ -38,14 +41,9 @@ public class Job {
     @Column(columnDefinition = "TEXT")
     private String aiGenSummary;
 
-    // Budget range fields
+    // Replaces budgetMin and budgetMax
     @Column(nullable = false)
-    private Double budgetMin;
-
-    @Column(nullable = false)
-    private Double budgetMax;
-
-    private String duration; // e.g., "1-3 months", "< 1 week"
+    private Double fixedBudget;
 
     // Independent status tracking for the Job post
     @Enumerated(EnumType.STRING)

@@ -3,6 +3,7 @@ package com.mark.conduyt.repository;
 
 import com.mark.conduyt.entity.Freelancer;
 import com.mark.conduyt.entity.SkillTag;
+import com.mark.conduyt.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,10 +17,12 @@ import java.util.Set;
 public interface FreelancerRepository extends JpaRepository<Freelancer, Long> {
 
     // Find Freelancer profile by associated core User ID
-    Optional<Freelancer> findByUserId(Long userId);
+    Optional<Freelancer> findByUser(User user);
 
     // Feature 3: Find all freelancers with notification toggle ON who possess any of the required job skills
     @Query("SELECT DISTINCT f FROM Freelancer f JOIN f.skills s " +
             "WHERE f.notifyOnMatchingJobs = true AND s IN :skills")
     List<Freelancer> findFreelancersToNotifyForSkills(@Param("skills") Set<SkillTag> skills);
+
+    List<Freelancer> findBySkillsIn(Set<SkillTag> attr0);
 }

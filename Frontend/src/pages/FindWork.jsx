@@ -1,212 +1,165 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useAxiosInstance } from "@/config/axiosConfig";
+import Navbar from "@/components/Navbar.jsx";
+import Footer from "@/components/layout/footer.jsx";
 import SearchBar from "../components/SearchBar";
 import FilterSidebar from "../components/FilterSidebar";
 import JobList from "../components/JobList";
-import JobModal from "../components/JobModal";
-import ApplyToJobModal from "../components/ApplyToJobModal";
-import Navbar from "../components/Navbar.jsx";
-import jobs from "../data/jobs";
 
-function FindWork() {
-  const [search, setSearch] = useState("");
-  const [skill, setSkill] = useState("");
-  const [budget, setBudget] = useState("");
-  const [match, setMatch] = useState("");
-  const [sortBy, setSortBy] = useState("highest");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedJob, setSelectedJob] = useState(null);
-   const [applyingJob, setApplyingJob] = useState(null);
+// ================= MOCK DATA FALLBACKS =================
+const MOCK_SKILLS = [
+    { id: 1, label: "React.js", name: "REACT" },
+    { id: 2, label: "Spring Boot", name: "SPRING_BOOT" },
+    { id: 3, label: "Java", name: "JAVA" },
+    { id: 4, label: "PostgreSQL", name: "POSTGRESQL" },
+    { id: 5, label: "Figma", name: "FIGMA" }
+];
 
-  const jobsPerPage = 2;
+const MOCK_PAGED_JOBS = {
+    content: [
+        { id: 101, title: "Senior Spring Boot Backend Developer", clientName: "TechNova Solutions", clientType: "COMPANY", clientPfpUrl: "https://i.pravatar.cc/150?u=tech", fixedBudget: 85000.0, aiGenSummary: "Looking for an expert Java developer to refactor a monolithic billing system into scalable Spring Boot microservices.", requiredSkills: ["Java", "Spring Boot", "Microservices"], createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() },
+        { id: 102, title: "React.js Frontend Specialist (Dashboard)", clientName: "Rahul Sharma", clientType: "INDIVIDUAL", clientPfpUrl: "https://i.pravatar.cc/150?u=rahul", fixedBudget: 45000.0, aiGenSummary: "Need a clean, responsive SaaS dashboard built in React.js with Tailwind CSS.", requiredSkills: ["React.js", "Tailwind CSS", "Figma"], createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
+        { id: 103, title: "Full Stack Developer for E-Commerce App", clientName: "StyleCart Inc.", clientType: "COMPANY", clientPfpUrl: null, fixedBudget: 120000.0, aiGenSummary: "End-to-end development of a multi-vendor e-commerce platform.", requiredSkills: ["Java", "Spring Boot", "React.js"], createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString() },
+        { id: 104, title: "PostgreSQL Database Administrator", clientName: "DataFlow Systems", clientType: "COMPANY", clientPfpUrl: "https://i.pravatar.cc/150?u=data", fixedBudget: 95000.0, aiGenSummary: "Require an experienced DBA to optimize slow-running queries.", requiredSkills: ["PostgreSQL", "Database Design"], createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString() },
+    ],
+    totalPages: 1,
+    totalElements: 4
+};
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, skill, budget, match, sortBy]);
+export default function FindWork() {
+    const axios = useAxiosInstance();
 
-  const filteredJobs = jobs.filter((job) => {
-    const searchMatch =
-      job.title.toLowerCase().includes(search.toLowerCase()) ||
-      job.company.toLowerCase().includes(search.toLowerCase()) ||
-      job.skills.some((s) =>
-        s.toLowerCase().includes(search.toLowerCase())
-      );
+    const DEFAULT_FILTERS = {
+        searchQuery: "",
+        selectedSkillId: "",
+        budgetMin: "",
+        budgetMax: "",
+        sortBy: "createdAt,desc"
+    };
 
-    const skillMatch =
-      skill === "" || job.skills.includes(skill);
+    // 1. Draft State (Updates instantly as user types/selects, does NOT trigger API)
+    const [draftFilters, setDraftFilters] = useState(DEFAULT_FILTERS);
 
-    const budgetMatch =
-      budget === "" ||
-      parseInt(job.budget.replace(/[^0-9]/g, "")) >= Number(budget);
+    // 2. Applied State (Updates ONLY when user clicks "Apply Filters", triggers API)
+    const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
 
-    const aiMatch =
-      match === "" ||
-      parseInt(job.match) >= Number(match);
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 10;
+
+    // Reset pagination to page 1 ONLY when applied filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [appliedFilters]);
+
+    // ================= FETCH SKILLS =================
+    const { data: skills = [] } = useQuery({
+        queryKey: ["skills"],
+        queryFn: async () => {
+            try {
+                const res = await axios.get("/api/skills");
+                return res.data?.data || res.data;
+            } catch (err) {
+                console.warn("Backend /api/skills offline. Serving mock data.");
+                return MOCK_SKILLS;
+            }
+        },
+        staleTime: 1000 * 60 * 30, // 30 mins
+    });
+
+    // ================= FETCH JOBS (Uses appliedFilters) =================
+    const { data: pagedData, isLoading } = useQuery({
+        queryKey: ["jobs", "feed", appliedFilters, currentPage],
+        queryFn: async () => {
+            try {
+                const params = {
+                    keyword: appliedFilters.searchQuery || undefined,
+                    skillIds: appliedFilters.selectedSkillId ? [appliedFilters.selectedSkillId] : undefined,
+                    minBudget: appliedFilters.budgetMin || undefined,
+                    maxBudget: appliedFilters.budgetMax || undefined,
+                    sort: appliedFilters.sortBy,
+                    page: currentPage - 1,
+                    size: pageSize
+                };
+                const res = await axios.get("/api/jobs/feed", { params });
+                return res.data?.data || res.data;
+            } catch (err) {
+                console.warn("Backend /api/jobs/feed offline. Serving mock data.");
+                return MOCK_PAGED_JOBS;
+            }
+        },
+        placeholderData: MOCK_PAGED_JOBS,
+        keepPreviousData: true,
+    });
+
+    // Action Handlers
+    const applyFilters = () => {
+        setAppliedFilters(draftFilters);
+    };
+
+    const clearFilters = () => {
+        setDraftFilters(DEFAULT_FILTERS);
+        setAppliedFilters(DEFAULT_FILTERS);
+    };
+
+    const updateDraftFilter = (key, value) => {
+        setDraftFilters((prev) => ({ ...prev, [key]: value }));
+    };
+
+    const jobsList = pagedData?.content || [];
+    const totalPages = pagedData?.totalPages || 1;
+    const totalElements = pagedData?.totalElements || jobsList.length;
 
     return (
-      searchMatch &&
-      skillMatch &&
-      budgetMatch &&
-      aiMatch
+        <div className="min-h-screen bg-[#F8FAFC] font-sans antialiased flex flex-col">
+            <Navbar />
+
+            <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col">
+
+                {/* TRUE CENTER ALIGNMENT: 3-Column Grid */}
+                <div className="flex flex-col lg:grid lg:grid-cols-[280px_minmax(0,1fr)_280px] gap-x-10 gap-y-6 items-start w-full">
+
+                    <div className="hidden lg:block"></div>
+
+                    <div className="w-full">
+                        <SearchBar
+                            searchQuery={draftFilters.searchQuery}
+                            onSearchChange={(val) => updateDraftFilter("searchQuery", val)}
+                            onApply={applyFilters}
+                        />
+                    </div>
+
+                    <div className="hidden lg:block"></div>
+
+                    {/* Sidebar */}
+                    <div className="w-full sticky top-24">
+                        <FilterSidebar
+                            skills={skills}
+                            draftFilters={draftFilters}
+                            updateDraftFilter={updateDraftFilter}
+                            onApply={applyFilters}
+                            onClear={clearFilters}
+                        />
+                    </div>
+
+                    <div className="w-full min-w-0">
+                        <JobList
+                            jobs={jobsList}
+                            totalFilteredJobs={totalElements}
+                            isLoading={isLoading}
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            setCurrentPage={setCurrentPage}
+                        />
+                    </div>
+
+                    <div className="hidden lg:block"></div>
+
+                </div>
+            </main>
+
+            <Footer />
+        </div>
     );
-  });
-
-  const sortedJobs = [...filteredJobs].sort((a, b) => {
-    if (sortBy === "highest") {
-      return parseInt(b.match) - parseInt(a.match);
-    }
-
-    if (sortBy === "lowest") {
-      return parseInt(a.match) - parseInt(b.match);
-    }
-
-    return 0;
-  });
-
-  const lastJobIndex = currentPage * jobsPerPage;
-  const firstJobIndex = lastJobIndex - jobsPerPage;
-
-  const currentJobs = sortedJobs.slice(
-    firstJobIndex,
-    lastJobIndex
-  );
-
-  const totalPages = Math.ceil(
-    filteredJobs.length / jobsPerPage
-  );
-
-  return (
-    <>
-    <Navbar />
-    <div className="min-h-screen bg-gradient-to-br from-white via-blue-50 to-slate-100 px-6 py-5">
-
-      {/* Hero Section */}
-
-      {/* Hero Section */}
-
-<div className="mb-5">
-
-  <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold mb-3">
-    ✨ AI Powered Freelance Marketplace
-  </div>
-
-  <h4 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-700 bg-clip-text text-transparent">
-    Find Your Next Project
-  </h4>
-
-  <p className="text-gray-500 text-base mt-2 max-w-2xl leading-7">
-    Discover verified freelance projects from trusted clients.
-    Search smarter with AI-powered recommendations and find work
-    that matches your skills, experience and preferred budget.
-  </p>
-
-</div>
-
-      <SearchBar
-        search={search}
-        setSearch={setSearch}
-      />
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mt-8">
-
-        {/* Sidebar */}
-
-        <div className="lg:col-span-1">
-
-          <FilterSidebar
-            skill={skill}
-            setSkill={setSkill}
-            budget={budget}
-            setBudget={setBudget}
-            match={match}
-            setMatch={setMatch}
-          />
-
-        </div>
-
-        {/* Job Section */}
-
-        <div className="lg:col-span-3 bg-white rounded-3xl border border-blue-100 shadow-lg p-8">
-
-          <div className="flex flex-col md:flex-row justify-between items-center gap-5 mb-8">
-
-            <div className="text-gray-500 font-medium">
-
-              Showing <span className="text-blue-600">{currentJobs.length}</span> of{" "}
-<span className="text-blue-600">{filteredJobs.length}</span> freelance projects
-            </div>
-
-            <h2 className="text-2xl font-bold text-gray-800">
-              Recommended Jobs
-            </h2>
-
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="border border-blue-200 rounded-xl px-4 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            >
-              <option value="highest">
-                AI Match Highest
-              </option>
-
-              <option value="lowest">
-                AI Match Lowest
-              </option>
-
-            </select>
-
-          </div>
-
-          <JobList
-            jobs={currentJobs}
-            setSelectedJob={setSelectedJob}
-          />
-
-          {/* Pagination */}
-
-          <div className="flex justify-center items-center gap-5 mt-10">
-
-            <button
-              onClick={() => setCurrentPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-6 py-3 rounded-full font-semibold disabled:opacity-40"
-            >
-              Previous
-            </button>
-
-            <span className="font-semibold text-lg">
-              Page {currentPage} of {totalPages}
-            </span>
-
-            <button
-              onClick={() => setCurrentPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-6 py-3 rounded-full font-semibold disabled:opacity-40"
-            >
-              Next
-            </button>
-
-          </div>
-
-        </div>
-
-      </div>
-
-      <JobModal
-        job={selectedJob}
-        onClose={() => setSelectedJob(null)}
-        onApply={() => {
-     setApplyingJob(selectedJob);
-     setSelectedJob(null);
-   }}
-  />
-        <ApplyToJobModal
-         job={applyingJob}
-        onClose={() => setApplyingJob(null)}
- />
-      
-    </div>
-    </>
-  );
 }
-
-export default FindWork;

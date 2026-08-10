@@ -97,7 +97,7 @@ public class SecurityConfig {
         config.setAllowCredentials(true); // Essential for Cookies
         config.setAllowedOrigins(List.of("http://localhost:5173"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

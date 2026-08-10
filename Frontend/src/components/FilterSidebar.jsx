@@ -1,136 +1,91 @@
-function FilterSidebar({
-  skill,
-  setSkill,
-  budget,
-  setBudget,
-  match,
-  setMatch,
-}) {
-  const resetFilters = () => {
-    setSkill("");
-    setBudget("");
-    setMatch("");
-  };
+import React from "react";
+import { SlidersHorizontal } from "lucide-react";
 
-  const skills = [
-    "React",
-    "JavaScript",
-    "Python",
-    "Java",
-    "Spring Boot",
-    "Node.js",
-    "MongoDB",
-    "Tailwind",
-  ];
+export default function FilterSidebar({
+                                          skills,
+                                          draftFilters,
+                                          updateDraftFilter,
+                                          onApply,
+                                          onClear
+                                      }) {
+    return (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-8 text-slate-900">
+                <SlidersHorizontal size={20} className="text-[#1798D7]" />
+                <h3 className="font-bold text-lg">Filters</h3>
+            </div>
 
-  return (
-    <div className="bg-white rounded-2xl border border-[#D7EAF5] shadow-lg p-6">
+            {/* Skill Filter */}
+            <div className="mb-6">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Required Skill</label>
+                <select
+                    value={draftFilters.selectedSkillId}
+                    onChange={(e) => updateDraftFilter("selectedSkillId", e.target.value)}
+                    className="w-full px-3 py-2.5 bg-[#F8FAFC] border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:border-[#1798D7] focus:ring-2 focus:ring-[#1798D7]/10 transition-all cursor-pointer appearance-none"
+                >
+                    <option value="">Any Skill</option>
+                    {skills.map((skill) => (
+                        <option key={skill.id} value={skill.id}>
+                            {skill.label || skill.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
 
-      {/* Header */}
+            {/* Budget Min/Max */}
+            <div className="mb-6 grid grid-cols-2 gap-3">
+                <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Min Budget</label>
+                    <input
+                        type="number"
+                        placeholder="₹ 0"
+                        value={draftFilters.budgetMin}
+                        onChange={(e) => updateDraftFilter("budgetMin", e.target.value)}
+                        className="w-full px-3 py-2.5 bg-[#F8FAFC] border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#09D66D] focus:ring-2 focus:ring-[#09D66D]/10 transition-all placeholder:text-slate-400"
+                    />
+                </div>
+                <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Max Budget</label>
+                    <input
+                        type="number"
+                        placeholder="₹ Max"
+                        value={draftFilters.budgetMax}
+                        onChange={(e) => updateDraftFilter("budgetMax", e.target.value)}
+                        className="w-full px-3 py-2.5 bg-[#F8FAFC] border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#09D66D] focus:ring-2 focus:ring-[#09D66D]/10 transition-all placeholder:text-slate-400"
+                    />
+                </div>
+            </div>
 
-      <h2 className="text-2xl font-bold bg-gradient-to-r from-[#1798D7] to-[#4372B5] bg-clip-text text-transparent mb-6">
-        Filters
-      </h2>
+            {/* Sort Options */}
+            <div className="mb-8">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Sort By</label>
+                <select
+                    value={draftFilters.sortBy}
+                    onChange={(e) => updateDraftFilter("sortBy", e.target.value)}
+                    className="w-full px-3 py-2.5 bg-[#F8FAFC] border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:border-[#1798D7] focus:ring-2 focus:ring-[#1798D7]/10 transition-all cursor-pointer appearance-none"
+                >
+                    <option value="createdAt,desc">Newest Posted</option>
+                    <option value="createdAt,asc">Oldest Posted</option>
+                    <option value="fixedBudget,desc">Budget: High to Low</option>
+                    <option value="fixedBudget,asc">Budget: Low to High</option>
+                </select>
+            </div>
 
-      {/* Skill */}
-
-      <div className="mb-6">
-
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          🔍 Skill
-        </label>
-
-        <div className="flex flex-wrap gap-2">
-
-          {skills.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() =>
-                setSkill(skill === item ? "" : item)
-              }
-              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 ${
-                skill === item
-                  ? "bg-[#1798D7] text-white border-[#1798D7]"
-                  : "bg-[#EAF6FC] text-[#4372B5] border-[#C8E4F2] hover:bg-[#D8F0FA]"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
-
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-3">
+                <button
+                    onClick={onApply}
+                    className="w-full bg-[#1798D7] text-white text-sm font-bold py-3 rounded-xl hover:bg-[#1280B8] transition-colors shadow-sm cursor-pointer"
+                >
+                    Apply Filters
+                </button>
+                <button
+                    onClick={onClear}
+                    className="w-full text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 py-2.5 rounded-xl transition-colors cursor-pointer"
+                >
+                    Clear all
+                </button>
+            </div>
         </div>
-
-      </div>
-
-      {/* Minimum Budget */}
-
-      <div className="mb-6">
-
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          💰 Minimum Budget
-        </label>
-
-        <select
-          value={budget}
-          onChange={(e) => setBudget(e.target.value)}
-          className="w-full border border-[#B9D9EA] rounded-xl px-4 py-3 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#1798D7]"
-        >
-          <option value="">All Budgets</option>
-          <option value="5000">₹5,000+</option>
-          <option value="10000">₹10,000+</option>
-          <option value="25000">₹25,000+</option>
-          <option value="50000">₹50,000+</option>
-        </select>
-
-      </div>
-
-      {/* AI Match */}
-
-      <div className="mb-6">
-
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          ✨ AI Match
-        </label>
-
-        <div className="flex flex-wrap gap-2">
-
-          {[
-            { label: "All", value: "" },
-            { label: "80%+", value: "80" },
-            { label: "90%+", value: "90" },
-            { label: "95%+", value: "95" },
-          ].map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              onClick={() => setMatch(item.value)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 ${
-                match === item.value
-                  ? "bg-[#4372B5] text-white border-[#4372B5]"
-                  : "bg-[#EEF3F9] text-[#4372B5] border-[#D2DFEA] hover:bg-[#E2EBF4]"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-
-        </div>
-
-      </div>
-
-      {/* Reset */}
-
-      <button
-        type="button"
-        onClick={resetFilters}
-        className="w-full bg-gradient-to-r from-[#1798D7] to-[#4372B5] text-white py-3 rounded-xl font-semibold shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
-      >
-        Reset Filters
-      </button>
-
-    </div>
-  );
+    );
 }
-
-export default FilterSidebar;

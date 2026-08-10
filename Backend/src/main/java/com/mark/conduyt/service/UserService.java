@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 
 @Service
@@ -42,16 +43,34 @@ public class UserService implements UserDetailsService {
         // Map the boolean flag to a standard Spring Security role
         String roleName = user.isAdmin() ? "ROLE_ADMIN" : "ROLE_USER";
 
+        // Assuming your enum has a value like 'ACTIVE'. Adjust if it's 'VERIFIED' etc.
+        boolean isEnabled = (user.getAccountStatus() == AccountStatus.ACTIVE);
+
+        // Using the expanded constructor to tie your AccountStatus to Spring's security checks
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
                 user.getPassword(),
+                isEnabled, // enabled - if false, Spring automatically throws DisabledException
+                true,      // accountNonExpired
+                true,      // credentialsNonExpired
+                true,      // accountNonLocked
                 Collections.singleton(new SimpleGrantedAuthority(roleName))
         );
     }
 
-//    public User saveUser(User user) {
-//        return userRepository.save(user);
-//    }
+
+    private String generateDefaultSlug(String email) {
+        // 1. Grab everything before the '@' symbol
+        String prefix = email.substring(0, email.indexOf('@'));
+
+        // 2. Remove any weird characters (just in case) and make it lowercase
+        String cleanPrefix = prefix.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+
+        // 3. Append a 6-character random string to ensure it's unique
+        String randomSuffix = UUID.randomUUID().toString().substring(0, 6);
+
+        return cleanPrefix + "-" + randomSuffix;
+    }
 
     public User createUser(UserRegisterRequestDTO request, MultipartFile profileImage) throws IOException {
         User user = new User();
@@ -59,6 +78,7 @@ public class UserService implements UserDetailsService {
         user.setLastName(request.getLastName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setProfileSlug(generateDefaultSlug(request.getEmail()));
         user.setAccountStatus(AccountStatus.PENDING);
 
         // Process file upload directly in the user service
@@ -147,6 +167,10 @@ public class UserService implements UserDetailsService {
 
         // Clear OTP from cache
         otpService.clearOtp(email);
+    }
+
+    public User getUserByEmail(String email) {
+        return userRepository.getUserByEmail(email);
     }
 
     // NOTE: You would need a utility similar to this for production code:

@@ -1,38 +1,47 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import LandingLayout from "./layouts/LandingLayout";
-import FindWork from "./pages/FindWork";
-import Freelancers from "./pages/Freelancers";
+import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Help from "./pages/Help";
+import FreelancerDashboard from "./pages/FreelancerDashboard";
 import ClientDashboard from "./pages/ClientDashboard";
+import Help from "./pages/Help";
+import FindWork from "./pages/FindWork";
+import Dashboard from "./pages/Dashboard";
+import ProfileView from "./pages/ProfileView";
+import JobDetail from "@/pages/JobDetail.jsx";
 
 function App() {
   return (
     <Router>
       <Routes>
+
         {/* Home Page */}
         <Route path="/" element={<LandingLayout />} />
 
+        <Route path="/jobs/:jobId" element={<JobDetail />} />
+
         {/* Find Work Page */}
-        <Route path="/find-work" element={<FindWork />} />
+        <Route path="/jobs" element={<FindWork />} />
 
-        {/* Freelancers Page */}
-        <Route path="/freelancers" element={<Freelancers />} />
-
-        {/* Authentication */}
+        {/* Other Pages */}
         <Route path="/login" element={<Login />} />
+
         <Route path="/register" element={<Register />} />
 
-        {/* Help */}
         <Route path="/help" element={<Help />} />
 
-        {/* Client Dashboard */}
         <Route
-          path="/client-dashboard/*"
+          path="/client-dashboard"
           element={<ClientDashboard />}
         />
+        {/* Freelancer Page */}
+         <Route path="/freelancerdashboard/*" element={<FreelancerDashboard />} />
+          <Route path="/dashboard/*" element={<Dashboard />} />
+
+        {/* {ProfileView} */}
+        <Route path="/profileView/*" element={<ProfileView />} />
       </Routes>
     </Router>
   );

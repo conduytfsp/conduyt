@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAxiosInstance } from "@/config/axiosConfig";
 import {
     LayoutDashboard, User, Building2, Briefcase,
-    BarChart3, ShieldCheck, CircleHelp, Sliders
+    BarChart3, ShieldCheck, Sliders, LogOut
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 
@@ -32,7 +32,7 @@ export default function ClientDashboardLayout() {
 
     const menuItems = [
         { icon: LayoutDashboard, name: "Overview", path: "/dashboard/overview" },
-        { icon: User, name: "Personal Details", path: "/dashboard/personal" },
+        { icon: User, name: "Personal Details", path: "/dashboard/profile" },
         ...(clientType !== "individual"
             ? [{ icon: Building2, name: "Company Details", path: "/dashboard/company" }]
             : []),
@@ -55,13 +55,21 @@ export default function ClientDashboardLayout() {
                 <aside className="hidden md:flex flex-col p-4 bg-white fixed left-0 top-16 h-[calc(100vh-64px)] w-64 border-r border-gray-200 z-40">
 
                     {/* User Widget */}
-                    <div onClick={() => navigate("profile")} className="mb-6 p-3 rounded-xl border border-gray-100 bg-gray-50 flex items-center gap-3 cursor-pointer hover:bg-gray-100 transition-colors">
+                    <div onClick={() => navigate("/dashboard/profile")} className="mb-6 p-3 rounded-xl border border-gray-100 bg-gray-50 flex items-center gap-3 cursor-pointer hover:bg-gray-100 transition-colors">
                         <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-300 bg-white flex-shrink-0">
-                            {profileData.profilePic ? <img src={profileData.profilePic} alt="Avatar" className="w-full h-full object-cover" /> : <div className="w-full h-full text-gray-500 flex items-center justify-center font-bold text-sm">{profileData.firstName?.[0] || "U"}</div>}
+                            {profileData.profilePic ? (
+                                <img src={profileData.profilePic} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full text-gray-500 flex items-center justify-center font-bold text-sm">
+                                    {profileData.firstName?.[0] || "U"}
+                                </div>
+                            )}
                         </div>
                         <div className="overflow-hidden">
                             <h2 className="text-sm font-bold text-gray-900 truncate">{profileData.firstName || "Client User"}</h2>
-                            <p className="text-xs text-gray-500 font-medium truncate">{clientType === "individual" ? "Individual Client" : companyData.companyName || "Company Client"}</p>
+                            <p className="text-xs text-gray-500 font-medium truncate">
+                                {clientType === "individual" ? "Individual Client" : companyData.companyName || "Company Client"}
+                            </p>
                         </div>
                     </div>
 
@@ -88,10 +96,14 @@ export default function ClientDashboardLayout() {
                         })}
                     </nav>
 
+                    {/* Logout Button */}
                     <div className="mt-auto border-t border-gray-100 pt-4">
-                        <Link to="/help" className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
-                            <CircleHelp size={18} strokeWidth={2} />
-                            <span>Help Center</span>
+                        <Link
+                            to="/logout"
+                            className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                        >
+                            <LogOut className="h-[18px] w-[18px] transition-transform group-hover:-translate-x-1" strokeWidth={2} />
+                            <span>Logout</span>
                         </Link>
                     </div>
                 </aside>
@@ -100,7 +112,7 @@ export default function ClientDashboardLayout() {
                 <main className="flex-1 md:ml-64 p-6 md:p-10 flex flex-col">
                     <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
 
-                        {/* THIS IS WHERE THE MAGIC HAPPENS. The active tab is injected here. */}
+                        {/* THIS IS WHERE THE ACTIVE TAB INJECTS */}
                         <Outlet context={{ profileData, companyData, clientType, setProfileData, setCompanyData, setClientType }} />
 
                         {/* FOOTER */}

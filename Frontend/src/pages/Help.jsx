@@ -1,190 +1,113 @@
-import React, { useState } from "react";
-import {
-  Search,
-  ChevronDown,
-  ChevronUp,
-  Briefcase,
-  Sparkles,
-  CreditCard,
-  ShieldCheck,
-  MessageSquare,
-  HelpCircle,
-} from "lucide-react";
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Book, CreditCard, Settings, UserCheck, ChevronDown } from 'lucide-react';
+import Navbar from "@/components/Navbar.jsx";
+import Footer from "@/components/layout/footer.jsx";
+
+const FAQS = [
+  {
+    question: "How does the AI Compatibility Score work?",
+    answer: "Our AI engine analyzes the required skills and description of a job post against your profile's skills, portfolio, and past experience to generate a match percentage. This helps both you and the client ensure a great fit."
+  },
+  {
+    question: "When do I get paid for a completed project?",
+    answer: "Payments are processed once the client approves the final milestone. Funds are securely held in escrow during the project and released to your configured payment method within 3-5 business days after approval."
+  },
+  {
+    question: "How do I update my Freelancer profile?",
+    answer: "Navigate to your Dashboard and click on the 'Profile' tab. From there, you can upload a new PDF resume, update your hourly rate, and add new skills or portfolio links."
+  },
+  {
+    question: "Can I apply to jobs if my profile is incomplete?",
+    answer: "We strongly recommend completing your profile first. Clients are significantly more likely to hire freelancers with a visible portfolio, uploaded resume, and verified skills."
+  }
+];
 
 export default function Help() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [openFaqIndex, setOpenFaqIndex] = useState(0); // Opens first FAQ by default
+  const [openFaq, setOpenFaq] = useState(null);
 
-  // Category Quick Links
-  const categories = [
-    {
-      title: "Job Management",
-      desc: "Learn how to post, edit, and close project listings.",
-      icon: Briefcase,
-    },
-    {
-      title: "AI Match & Ranking",
-      desc: "Understand how candidate scoring works.",
-      icon: Sparkles,
-    },
-    {
-      title: "Payments & Invoicing",
-      desc: "Manage billing, GST details, and milestone escrows.",
-      icon: CreditCard,
-    },
-    {
-      title: "Security & Privacy",
-      desc: "2FA, password resets, and role permissions.",
-      icon: ShieldCheck,
-    },
-  ];
-
-  // FAQ Items Data
-  const faqs = [
-    {
-      question: "How do I post a new job?",
-      answer:
-        "Navigate to 'Jobs Management' from your dashboard sidebar and click the 'Post New Job' button. Fill out the job title, required skills, and budget details to publish.",
-    },
-    {
-      question: "How does AI Candidate Ranking work?",
-      answer:
-        "Our AI algorithms analyze incoming freelancer proposals by matching their skill badges, past project ratings, and portfolio relevance against your specific job description.",
-    },
-    {
-      question: "Can I switch between Individual and Company modes?",
-      answer:
-        "Yes! In 'Personal Details', you can toggle your Account Category between Individual/Solo Client and Registered Company. This dynamically adjusts your portal settings.",
-    },
-    {
-      question: "Where can I manage tax invoices and GSTIN?",
-      answer:
-        "Go to 'Company Details' in your dashboard sidebar. There you can add or update your 15-digit GSTIN and registered billing address.",
-    },
-    {
-      question: "What should I do if a password reset link expires?",
-      answer:
-        "You can request a new reset email anytime from the Security tab by clicking 'Reset Password', or reach out directly to our 24/7 support team.",
-    },
-  ];
-
-  // Filter FAQs based on search
-  const filteredFaqs = faqs.filter(
-    (faq) =>
-      faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[#f2fcf6] text-[#141b2b] p-4 md:p-8 lg:p-10 max-w-5xl mx-auto space-y-8 antialiased">
-      {/* ================= HEADER & SEARCH ================= */}
-      <header className="text-center max-w-2xl mx-auto space-y-4 pt-4">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#09D66D]/10 text-[#09D66D] rounded-full text-xs font-semibold">
-          <HelpCircle size={14} /> Help Center
-        </div>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-          How can we help you today?
-        </h1>
-        <p className="text-sm md:text-base text-gray-500">
-          Search our knowledge base or explore popular topics below.
-        </p>
+      <div className="min-h-screen bg-[#F8FAFC] font-sans antialiased flex flex-col">
+        <Navbar />
 
-        {/* Search Bar */}
-        <div className="relative max-w-xl mx-auto pt-2">
-          <Search
-            size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search for articles, guides, or questions..."
-            className="w-full pl-11 pr-4 py-3 bg-white border border-[#09D66D]/20 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-[#09D66D] outline-none transition-all"
-          />
-        </div>
-      </header>
+        <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-16 flex flex-col">
 
-      {/* ================= QUICK CATEGORY CARDS ================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {categories.map((cat) => {
-          const Icon = cat.icon;
-          return (
-            <div
-              key={cat.title}
-              className="bg-white p-5 rounded-xl border border-[#09D66D]/20 shadow-sm hover:border-[#09D66D]/60 hover:shadow-md transition-all cursor-pointer group"
-            >
-              <div className="p-2.5 bg-[#09D66D]/10 text-[#09D66D] rounded-lg w-fit mb-3 group-hover:bg-[#09D66D] group-hover:text-white transition-colors">
-                <Icon size={20} />
-              </div>
-              <h3 className="font-semibold text-gray-900 text-sm mb-1">
-                {cat.title}
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                {cat.desc}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ================= FAQ ACCORDION SECTION ================= */}
-      <div className="bg-white border border-[#09D66D]/20 rounded-xl p-6 md:p-8 shadow-sm space-y-6">
-        <div>
-          <h2 className="text-xl font-bold text-[#141b2b]">
-            Frequently Asked Questions
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">
-            Quick answers to standard client workflow questions.
-          </p>
-        </div>
-
-        <div className="divide-y divide-gray-100">
-          {filteredFaqs.length > 0 ? (
-            filteredFaqs.map((faq, idx) => {
-              const isOpen = openFaqIndex === idx;
-              return (
-                <div key={faq.question} className="py-4 first:pt-0 last:pb-0">
-                  <button
-                    onClick={() => setOpenFaqIndex(isOpen ? -1 : idx)}
-                    className="w-full flex items-center justify-between text-left font-semibold text-gray-900 text-sm hover:text-[#09D66D] transition-colors py-1 cursor-pointer"
-                  >
-                    <span>{faq.question}</span>
-                    {isOpen ? (
-                      <ChevronUp size={18} className="text-[#09D66D] flex-shrink-0" />
-                    ) : (
-                      <ChevronDown size={18} className="text-gray-400 flex-shrink-0" />
-                    )}
-                  </button>
-
-                  {isOpen && (
-                    <p className="text-sm text-gray-600 mt-2 leading-relaxed pl-0 pr-6 animate-fadeIn">
-                      {faq.answer}
-                    </p>
-                  )}
+          {/* Search Hero */}
+          <div className="bg-[#1798D7] rounded-3xl p-10 md:p-16 text-center text-white mb-16 shadow-lg relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+            <div className="relative z-10 max-w-2xl mx-auto">
+              <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-6">How can we help you?</h1>
+              <div className="relative w-full text-slate-900">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-slate-400">
+                  <Search size={22} />
                 </div>
-              );
-            })
-          ) : (
-            <div className="py-8 text-center text-sm text-gray-500">
-              No help articles found matching "{searchQuery}".
+                <input
+                    type="text"
+                    placeholder="Search for articles, guides, or FAQs..."
+                    className="block w-full pl-14 pr-6 py-4 border-none rounded-2xl bg-white text-lg font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-white/30 transition-all shadow-xl"
+                />
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* ================= CONTACT SUPPORT BANNER ================= */}
-      <div className="bg-gradient-to-r from-[#09D66D] to-[#4AB7B2] text-white p-6 md:p-8 rounded-xl shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        <div>
-          <h3 className="text-lg font-bold">Still need assistance?</h3>
-          <p className="text-xs md:text-sm text-emerald-50 mt-1">
-            Our support team is available 24/7 to help resolve technical or billing inquiries.
-          </p>
-        </div>
-        <button className="bg-white text-[#09D66D] hover:bg-emerald-50 font-semibold text-sm px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm cursor-pointer">
-          <MessageSquare size={16} /> Contact Support
-        </button>
+          {/* Categories Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+            <HelpCategoryCard icon={Book} title="Getting Started" desc="Basics of using the platform." color="text-blue-500" bg="bg-blue-50" />
+            <HelpCategoryCard icon={UserCheck} title="Account & Profile" desc="Manage your settings." color="text-emerald-500" bg="bg-emerald-50" />
+            <HelpCategoryCard icon={CreditCard} title="Payments & Fees" desc="Billing and withdrawals." color="text-indigo-500" bg="bg-indigo-50" />
+            <HelpCategoryCard icon={Settings} title="Troubleshooting" desc="Fix common account issues." color="text-rose-500" bg="bg-rose-50" />
+          </div>
+
+          {/* FAQ Section */}
+          <div className="max-w-3xl mx-auto w-full">
+            <h2 className="text-2xl font-bold text-slate-900 mb-8 text-center">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {FAQS.map((faq, idx) => (
+                  <div key={idx} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden transition-colors hover:border-[#1798D7]/30">
+                    <button
+                        onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                        className="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none cursor-pointer"
+                    >
+                      <span className="font-bold text-slate-800 text-base">{faq.question}</span>
+                      <ChevronDown size={20} className={`text-slate-400 transition-transform duration-300 ${openFaq === idx ? 'rotate-180 text-[#1798D7]' : ''}`} />
+                    </button>
+                    <AnimatePresence>
+                      {openFaq === idx && (
+                          <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden"
+                          >
+                            <div className="px-6 pb-5 pt-1 text-slate-600 text-sm leading-relaxed border-t border-slate-100 mt-2">
+                              {faq.answer}
+                            </div>
+                          </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+              ))}
+            </div>
+          </div>
+
+        </main>
+        <Footer />
       </div>
-    </div>
+  );
+}
+
+function HelpCategoryCard({ icon: Icon, title, desc, color, bg }) {
+  return (
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-center group">
+        <div className={`h-14 w-14 rounded-2xl ${bg} ${color} flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform`}>
+          <Icon size={24} />
+        </div>
+        <h3 className="text-lg font-bold text-slate-900 mb-1">{title}</h3>
+        <p className="text-xs text-slate-500 font-medium">{desc}</p>
+      </div>
   );
 }

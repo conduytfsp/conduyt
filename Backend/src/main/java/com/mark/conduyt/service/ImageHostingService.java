@@ -47,7 +47,7 @@ public class ImageHostingService {
 
             Map uploadResult = cloudinary.uploader().upload(file.getBytes(), params);
 
-            // Return the secure HTTPS URL to store in your PostgreSQL database
+            // Return the secure HTTPS URL to store in your database
             return uploadResult.get("secure_url").toString();
         } catch (IOException e) {
             throw new RuntimeException("Failed to upload pdf", e);

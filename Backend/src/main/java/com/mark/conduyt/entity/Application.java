@@ -46,4 +46,5 @@ public class Application {
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime appliedAt = LocalDateTime.now();
+
 }

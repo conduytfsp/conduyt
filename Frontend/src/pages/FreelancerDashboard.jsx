@@ -5,7 +5,7 @@ import PortfolioTab from '@/features/portfolio/PortfolioTab';
 import ApplicationsTab from '@/features/applications/ApplicationsTab';
 import AnalyticsTab from '@/features/analytics/AnalyticsTab';
 import SecurityTab from '@/features/security/SecurityTab';
-import FreelancerNav from "@/components/Navbar"
+import FreelancerExtrasView from '@/components/layout/FreelancerExtrasView'; // FIX: Import the new component
 import Footer from '../components/layout/Footer';
 
 /**
@@ -15,7 +15,6 @@ import Footer from '../components/layout/Footer';
  */
 export default function FreelancerDashboard() {
   return <>
-    <FreelancerNav/>
     <Routes>
       <Route element={<DashboardLayout />}>
         {/* FIX 1: Use absolute path for index redirect */}
@@ -26,6 +25,7 @@ export default function FreelancerDashboard() {
         <Route path="applications" element={<ApplicationsTab />} />
         <Route path="analytics" element={<AnalyticsTab />} />
         <Route path="security" element={<SecurityTab />} />
+        <Route path="extras" element={<FreelancerExtrasView />} /> {/* FIX: Added Extras route */}
 
         {/* FIX 2: Use absolute path for the catch-all redirect to prevent recursive loops */}
         <Route path="*" element={<Navigate to="/dashboard/profile" replace />} />

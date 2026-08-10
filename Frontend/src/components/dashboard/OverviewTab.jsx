@@ -10,7 +10,7 @@ import {
     PlusCircle
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
-import { useAxiosInstance } from "../../config/axiosConfig";
+import { useAxiosInstance } from "@/config/axiosConfig";
 
 export default function OverviewTab() {
     const axiosInstance = useAxiosInstance();

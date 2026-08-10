@@ -1,14 +1,15 @@
-package com.mark.conduyt.security;
+package com.mark.conduyt.security; // Updated package
 
+import com.mark.conduyt.entity.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
 
-@Component
+@Service // @Service is slightly more semantically accurate than @Component here
 public class JwtService {
 
     @Value("${JWT_SECRET_KEY}")
@@ -20,10 +21,14 @@ public class JwtService {
         return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
-    public String generateToken(String email, String role) {
+    // 1. Now takes the whole User entity
+    public String generateToken(User user) {
         return Jwts.builder()
-                .subject(email)
-                .claim("role", role)
+                .subject(user.getEmail())
+                // 2. We don't need strict Client/Freelancer roles here, but caching the admin status is smart
+                .claim("isAdmin", user.isAdmin())
+                // 3. Optional: A base role so Spring Security doesn't complain if it expects one
+                .claim("role", user.isAdmin() ? "ROLE_ADMIN" : "ROLE_USER")
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(getSigningKey())

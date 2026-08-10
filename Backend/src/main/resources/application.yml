@@ -28,7 +28,7 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: conduytfsp@gmail.com
-    password: ${GMAIL_APP_PASSWORD} # Paste 16-char app password here
+    password: ${GMAIL_APP_PASSWORD}
     properties:
       mail:
         smtp:
@@ -47,3 +47,8 @@ spring:
 app:
   frontend:
     url: ${FRONTEND_URL:http://localhost:3000}
+
+gemini:
+  api:
+    key: ${GEMINI_API_KEY}
+    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent

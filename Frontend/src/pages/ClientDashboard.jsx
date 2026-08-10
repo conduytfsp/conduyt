@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 import ClientDashboardLayout from "@/components/dashboard/ClientDashboardLayout";
 import OverviewTab from "@/components/dashboard/OverviewTab";
-import ClientProfile from "@/components/dashboard/ClientProfile";
 import PersonalDetailsView from "@/components/dashboard/PersonalDetailsView";
 import CompanyDetailsView from "@/components/dashboard/CompanyDetailsView";
 import JobManagementView from "@/components/dashboard/JobManagementView";

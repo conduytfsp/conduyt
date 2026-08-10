@@ -15,4 +15,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Registration validation check
     boolean existsByEmail(String email);
+
+    User getUserByEmail(String email);
 }

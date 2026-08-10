@@ -1,43 +1,27 @@
-import React, { useEffect, useState } from "react";
-import ClientDashboard from "./ClientDashboard";
-import FreelancerDashboard from "./FreelancerDashboard";
-
-// Helper function to read cookies
-const getCookie = (name) => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(";").shift();
-    return null;
-};
+import React from "react";
+import { useAppStore } from "@/store/useAppStore";
+import ClientDashboard from "./ClientDashboard"; // Adjust path if needed
+import FreelancerDashboard from "./FreelancerDashboard"; // Adjust path if needed
 
 export default function Dashboard() {
-    // Initialize state directly from the cookie for zero-delay rendering
-    const [activeMode, setActiveMode] = useState(getCookie("active_mode"));
-
-    const syncDashboardMode = () => {
-        setActiveMode(getCookie("active_mode"));
-    };
-
-    useEffect(() => {
-        // Listen for the "modeChanged" event dispatched by the Navbar
-        window.addEventListener("modeChanged", syncDashboardMode);
-        return () => window.removeEventListener("modeChanged", syncDashboardMode);
-    }, []);
+    // We subscribe directly to the Zustand store.
+    // If 'mode' changes anywhere in the app, this component instantly re-renders.
+    const mode = useAppStore((state) => state.mode);
 
     // ================= THE TRAFFIC CONTROLLER =================
 
-    if (activeMode === "client") {
+    if (mode === "client") {
         return <ClientDashboard />;
     }
 
-    if (activeMode === "freelancer") {
+    if (mode === "freelancer") {
         return <FreelancerDashboard />;
     }
 
-    // Fallback while Axios potentially redirects them, or if cookie is loading
+    // Fallback if mode is somehow undefined or loading
     return (
-        <div className="flex min-h-screen items-center justify-center bg-[#f9f9ff]">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-[#00628e]"></div>
+        <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-[#1798D7]"></div>
         </div>
     );
 }
