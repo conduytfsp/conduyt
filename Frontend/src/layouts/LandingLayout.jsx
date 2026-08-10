@@ -3,12 +3,19 @@ import { NavLink } from 'react-router-dom';
 import { Sparkles, Briefcase, Users, ArrowRight, ChevronLeft, ChevronRight, CheckCircle2, ShieldCheck } from 'lucide-react';
 import Navbar from '../components/Navbar.jsx';
 import Footer from '../components/Footer.jsx';
-import { useAxiosInstance } from '@/config/axiosConfig';
 
 import FeaturedJobs from '../components/FeaturedJobs';
 import FeaturedFreelancers from '../components/FeaturedFreelancers';
 
-// Stock images for the auto-sliding hero banner (inspired by your reference image layout)
+// Helper to read authentication cookies instantly
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(";").shift();
+  return null;
+};
+
+// Stock images for the auto-sliding hero banner
 const HERO_SLIDES = [
   {
     image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=80",
@@ -31,27 +38,20 @@ const HERO_SLIDES = [
 ];
 
 export default function LandingLayout() {
-  const axiosInstance = useAxiosInstance();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Check login status by attempting to hit a protected backend route or profile check via cookie
+  // Check login state instantly via cookies on mount & location change
   useEffect(() => {
-    let isMounted = true;
-    const checkAuth = async () => {
-      try {
-        // Ping an endpoint that requires authentication to see if cookie is valid
-        const res = await axiosInstance.get('/api/freelancers/profile');
-        if (isMounted && res.status === 200) {
-          setIsLoggedIn(true);
-        }
-      } catch (err) {
-        if (isMounted) setIsLoggedIn(false);
-      }
-    };
-    checkAuth();
-    return () => { isMounted = false; };
-  }, [axiosInstance]);
+    const profilesCookie = getCookie("available_profiles");
+    const tokenCookie = getCookie("accessToken");
+
+    if (profilesCookie || tokenCookie) {
+      setIsLoggedIn(true);
+    } else {
+      setIsLoggedIn(false);
+    }
+  }, []);
 
   // Auto-sliding hero interval (Every 6 seconds)
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function LandingLayout() {
 
         <main className="flex-grow flex flex-col items-center w-full">
 
-          {/* ================= HERO SLIDER SECTION (Inspired by reference screenshot) ================= */}
+          {/* ================= HERO SLIDER SECTION ================= */}
           <section className="relative w-full h-[550px] md:h-[650px] overflow-hidden bg-slate-900 flex items-center">
             {HERO_SLIDES.map((slide, index) => (
                 <div
@@ -86,7 +86,7 @@ export default function LandingLayout() {
                   {/* Slide Content */}
                   <div className="absolute inset-0 z-20 flex items-center max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 w-full">
                     <div className="max-w-2xl space-y-6 text-white">
-                      <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold uppercase tracking-wider text-[#09D66D]">
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-bold uppercase tracking-wider text-[#09D66D]">
                         <Sparkles size={14} /> {slide.tag}
                       </div>
 
@@ -98,19 +98,19 @@ export default function LandingLayout() {
                         {slide.description}
                       </p>
 
-                      {/* Conditional Action Buttons */}
+                      {/* Conditional Action Buttons based on instant cookie auth */}
                       <div className="pt-2 flex flex-wrap gap-4">
                         {!isLoggedIn ? (
                             <>
                               <NavLink
-                                  to="/register?type=freelancer"
-                                  className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#1798D7] text-white font-bold text-sm hover:bg-[#1280B8] shadow-lg transition-all active:scale-95"
+                                  to="/register"
+                                  className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#1798D7] text-white font-bold text-sm hover:bg-[#1280B8] shadow-lg transition-all active:scale-95 cursor-pointer"
                               >
                                 <Briefcase size={18} /> I'm looking for work
                               </NavLink>
                               <NavLink
-                                  to="/register?type=client"
-                                  className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#09D66D] text-white font-bold text-sm hover:bg-[#07B85D] shadow-lg transition-all active:scale-95"
+                                  to="/register"
+                                  className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#09D66D] text-white font-bold text-sm hover:bg-[#07B85D] shadow-lg transition-all active:scale-95 cursor-pointer"
                               >
                                 <Users size={18} /> I need to hire
                               </NavLink>
@@ -118,7 +118,7 @@ export default function LandingLayout() {
                         ) : (
                             <NavLink
                                 to="/dashboard"
-                                className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-white text-slate-900 font-bold text-sm hover:bg-slate-100 shadow-lg transition-all active:scale-95"
+                                className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-white text-slate-900 font-bold text-sm hover:bg-slate-100 shadow-lg transition-all active:scale-95 cursor-pointer"
                             >
                               Go to Dashboard <ArrowRight size={18} />
                             </NavLink>
@@ -151,7 +151,7 @@ export default function LandingLayout() {
                   <button
                       key={idx}
                       onClick={() => setCurrentSlide(idx)}
-                      className={`h-2 rounded-full transition-all ${idx === currentSlide ? 'w-8 bg-[#09D66D]' : 'w-2 bg-white/50'}`}
+                      className={`h-2 rounded-full transition-all cursor-pointer ${idx === currentSlide ? 'w-8 bg-[#09D66D]' : 'w-2 bg-white/50'}`}
                       aria-label={`Go to slide ${idx + 1}`}
                   />
               ))}
@@ -164,7 +164,7 @@ export default function LandingLayout() {
             <FeaturedJobs />
           </div>
 
-          {/* ================= PLATFORM STATS BAR (Moved to bottom) ================= */}
+          {/* ================= PLATFORM STATS BAR ================= */}
           <section className="w-full max-w-6xl mx-auto px-6 py-16">
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-8 md:p-12">
               <div className="text-center max-w-xl mx-auto mb-10">
