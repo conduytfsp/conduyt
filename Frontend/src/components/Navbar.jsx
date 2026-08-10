@@ -77,9 +77,10 @@ export default function Navbar() {
 
         try {
             const token = getCookie("accessToken");
+            // Updated to use standard /api path (handled by Vite proxy locally & Vercel rewrites in production)
             const streamUrl = token
-                ? `/backend_url/api/notifications/stream?token=${token}`
-                : `/backend_url/api/notifications/stream`;
+                ? `/api/notifications/stream?token=${token}`
+                : `/api/notifications/stream`;
 
             eventSource = new EventSource(streamUrl, { withCredentials: true });
 

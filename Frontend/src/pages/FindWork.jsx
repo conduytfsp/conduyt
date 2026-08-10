@@ -27,6 +27,12 @@ const MOCK_PAGED_JOBS = {
     totalElements: 4
 };
 
+const EMPTY_PAGED_JOBS = {
+    content: [],
+    totalPages: 1,
+    totalElements: 0
+};
+
 export default function FindWork() {
     const axios = useAxiosInstance();
 
@@ -59,7 +65,7 @@ export default function FindWork() {
         queryFn: async () => {
             try {
                 const res = await axios.get("/api/skills");
-                return res.data?.data || res.data;
+                return res.data?.data || res.data || [];
             } catch (err) {
                 console.warn("Backend /api/skills offline. Serving mock data.");
                 return MOCK_SKILLS;
@@ -83,7 +89,16 @@ export default function FindWork() {
                     size: pageSize
                 };
                 const res = await axios.get("/api/jobs/feed", { params });
-                return res.data?.data || res.data;
+                const responseData = res.data?.data || res.data;
+
+                // If backend returns null or empty structure, ensure safe shape
+                if (!responseData) return EMPTY_PAGED_JOBS;
+
+                return {
+                    content: responseData.content || [],
+                    totalPages: responseData.totalPages || 1,
+                    totalElements: responseData.totalElements ?? (responseData.content?.length || 0)
+                };
             } catch (err) {
                 console.warn("Backend /api/jobs/feed offline. Serving mock data.");
                 return MOCK_PAGED_JOBS;
@@ -109,7 +124,7 @@ export default function FindWork() {
 
     const jobsList = pagedData?.content || [];
     const totalPages = pagedData?.totalPages || 1;
-    const totalElements = pagedData?.totalElements || jobsList.length;
+    const totalElements = pagedData?.totalElements ?? jobsList.length;
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] font-sans antialiased flex flex-col">

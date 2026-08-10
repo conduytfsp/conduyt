@@ -1,23 +1,22 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite'
+import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
 export default defineConfig(({ mode }) => {
   const isDev = mode === 'development';
 
   return {
-    plugins: [react(),tailwindcss()],
+    plugins: [react(), tailwindcss()],
     server: {
-      // Only include proxy setup if in development mode
+      // Local development proxy
       proxy: isDev ? {
-        '/backend_url': {
-          target: 'http://localhost:8080', // Your local Backend port
+        '/api': {
+          target: 'http://localhost:8080', // Local Spring Boot backend
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(/^\/backend_url/, '')
         }
-      } : {} // Pass an empty object for production
+      } : {}
     },
     resolve: {
       alias: {

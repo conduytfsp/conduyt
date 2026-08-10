@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,22 +15,22 @@ const getCookie = (name) => {
 
 export function useAxiosInstance() {
     const navigate = useNavigate();
+    const navigateRef = useRef(navigate);
+
+    useEffect(() => {
+        navigateRef.current = navigate;
+    }, [navigate]);
 
     const axiosInstance = useMemo(() => {
-        // 1. Create the base instance
+        // 1. Create the base instance with baseURL matching your /api proxy & rewrites
         const instance = axios.create({
-            baseURL: '/backend_url',
+            baseURL: '/api',
             timeout: 60000,
             withCredentials: true, // CRITICAL: Ensures Cookies (JWT & XSRF) are sent/received
         });
 
         // 2. Request Interceptor: Handle CSRF Token
         instance.interceptors.request.use((config) => {
-            // We no longer need to manually add the Authorization header.
-            // The HttpOnly cookie handles the JWT automatically.
-
-            // However, we MUST handle CSRF for non-GET requests (usually).
-            // Spring expects the token from the 'XSRF-TOKEN' cookie to be in the 'X-XSRF-TOKEN' header.
             const xsrfToken = getCookie('XSRF-TOKEN');
 
             if (xsrfToken) {
@@ -48,15 +48,11 @@ export function useAxiosInstance() {
             (error) => {
                 const status = error.response?.status;
 
-                // Check for 401 (Unauthorized) or 403 (Forbidden)
                 if (status === 401 || status === 403) {
                     console.warn("Axios Interceptor: Auth error detected. Redirecting to login.");
 
-                    // Note: We cannot remove the HttpOnly cookie from here (client-side).
-                    // We just redirect. The backend 'logout' endpoint is responsible for clearing it.
-
                     if (typeof window !== 'undefined') {
-                        navigate('/login', { state: { showAuthErrorModal: true } });
+                        navigateRef.current('/login', { state: { showAuthErrorModal: true } });
                     }
                 }
 
@@ -65,7 +61,7 @@ export function useAxiosInstance() {
         );
 
         return instance;
-    }, [navigate]);
+    }, []);
 
     return axiosInstance;
 }
