@@ -1,6 +1,7 @@
 const jobs = [
   {
     id: 1,
+    clientId: 1,
     title: "Build a React Portfolio Website",
     company: "Sarah Johnson",
     budget: "₹15,000",
@@ -14,6 +15,7 @@ const jobs = [
 
   {
     id: 2,
+    clientId: 2,
     title: "MERN Admin Dashboard",
     company: "TechNova Solutions",
     budget: "₹45,000",
@@ -27,6 +29,7 @@ const jobs = [
 
   {
     id: 3,
+    clientId: 3,
     title: "Spring Boot REST API",
     company: "CodeCraft Technologies",
     budget: "₹35,000",
@@ -40,6 +43,7 @@ const jobs = [
 
   {
     id: 4,
+    clientId: 4,
     title: "Mobile App UI Design",
     company: "GreenLeaf Startup",
     budget: "₹12,000",
@@ -53,6 +57,7 @@ const jobs = [
 
   {
     id: 5,
+    clientId: 5,
     title: "Python Automation Script",
     company: "Rahul Sharma",
     budget: "₹8,000",
@@ -66,6 +71,7 @@ const jobs = [
 
   {
     id: 6,
+    clientId: 6,
     title: "WordPress Business Website",
     company: "Bright Agency",
     budget: "₹18,000",
@@ -79,6 +85,7 @@ const jobs = [
 
   {
     id: 7,
+    clientId: 7,
     title: "E-commerce Website Development",
     company: "Digital Mart",
     budget: "₹60,000",
@@ -92,6 +99,7 @@ const jobs = [
 
   {
     id: 8,
+    clientId: 8,
     title: "Logo & Brand Identity Design",
     company: "Creative Minds",
     budget: "₹7,000",
@@ -105,6 +113,7 @@ const jobs = [
 
   {
     id: 9,
+    clientId: 9,
     title: "Flutter Food Delivery App",
     company: "Foodie Express",
     budget: "₹55,000",
@@ -118,6 +127,7 @@ const jobs = [
 
   {
     id: 10,
+    clientId: 10,
     title: "AI Chatbot Integration",
     company: "NextGen AI",
     budget: "₹70,000",
@@ -131,6 +141,7 @@ const jobs = [
 
   {
     id: 11,
+    clientId: 11,
     title: "Inventory Management System",
     company: "ABC Retail",
     budget: "₹40,000",
@@ -144,6 +155,7 @@ const jobs = [
 
   {
     id: 12,
+    clientId: 12,
     title: "Responsive Landing Page",
     company: "Pixel Studio",
     budget: "₹9,000",

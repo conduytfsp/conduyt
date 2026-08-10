@@ -10,6 +10,7 @@ import Help from "./pages/Help";
 import FindWork from "./pages/FindWork";
 import Dashboard from "./pages/Dashboard";
 import ProfileView from "./pages/ProfileView";
+import ClientProfile from "./pages/ClientProfile";
 
 function App() {
   return (
@@ -39,6 +40,11 @@ function App() {
 
         {/* {ProfileView} */}
         <Route path="/profileView/*" element={<ProfileView />} />
+        {/* {Client Profile} */}
+        <Route
+  path="/client-profile/:clientId"
+  element={<ClientProfile />}
+/>
       </Routes>
     </Router>
   );
