@@ -1,6 +1,6 @@
 import { X, MapPin, Clock, CheckCircle } from "lucide-react";
 
-function JobModal({ job, onClose }) {
+function JobModal({ job, onClose ,onApply }) {
   if (!job) return null;
 
   return (
@@ -153,6 +153,7 @@ function JobModal({ job, onClose }) {
 
             <button
               type="button"
+              onClick={onApply}
               className="bg-gradient-to-r from-[#1798D7] to-[#4372B5] text-white px-6 py-2.5 rounded-xl font-semibold shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200"
             >
               🚀 Apply Now

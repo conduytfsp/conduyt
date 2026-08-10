@@ -3,6 +3,7 @@ import SearchBar from "../components/SearchBar";
 import FilterSidebar from "../components/FilterSidebar";
 import JobList from "../components/JobList";
 import JobModal from "../components/JobModal";
+import ApplyToJobModal from "../components/ApplyToJobModal";
 import Navbar from "../components/Navbar.jsx";
 import jobs from "../data/jobs";
 
@@ -14,6 +15,7 @@ function FindWork() {
   const [sortBy, setSortBy] = useState("highest");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedJob, setSelectedJob] = useState(null);
+   const [applyingJob, setApplyingJob] = useState(null);
 
   const jobsPerPage = 2;
 
@@ -192,8 +194,16 @@ function FindWork() {
       <JobModal
         job={selectedJob}
         onClose={() => setSelectedJob(null)}
-      />
-
+        onApply={() => {
+     setApplyingJob(selectedJob);
+     setSelectedJob(null);
+   }}
+  />
+        <ApplyToJobModal
+         job={applyingJob}
+        onClose={() => setApplyingJob(null)}
+ />
+      
     </div>
     </>
   );
