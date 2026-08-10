@@ -95,11 +95,12 @@ public class EmailService {
                 + "Best regards,\nThe Conduyt Team";
 
         try {
+            logger.info(">>> Attempting to send Registration OTP email to: {}", toEmail);
             mailSenderService.sendEmail(fromEmail, fromName, toEmail, userName, subject, textContent, htmlContent);
-            logger.info("Registration OTP email sent successfully to {} ({})", toEmail, role);
+            logger.info(">>> Registration OTP email sent successfully to {} ({})", toEmail, role);
         } catch (Exception e) {
-            logger.error("Failed to send registration OTP email to {}", toEmail, e);
-            throw new RuntimeException("Failed to send registration OTP email", e);
+            logger.error(">>> CRITICAL EMAIL FAILURE: Failed to send Registration OTP to {}. Error: {}", toEmail, e.getMessage(), e);
+            throw new RuntimeException("Failed to send registration OTP email: " + e.getMessage(), e);
         }
     }
 
@@ -128,11 +129,12 @@ public class EmailService {
                 + "Best regards,\nThe Conduyt Team";
 
         try {
+            logger.info(">>> Attempting to send Successful Registration email to: {}", toEmail);
             mailSenderService.sendEmail(fromEmail, fromName, toEmail, userName, subject, textContent, htmlContent);
-            logger.info("Successful registration email sent to {}", toEmail);
+            logger.info(">>> Successful registration email sent to {}", toEmail);
         } catch (Exception e) {
-            logger.error("Failed to send successful registration email to {}", toEmail, e);
-            throw new RuntimeException("Failed to send successful registration email", e);
+            logger.error(">>> CRITICAL EMAIL FAILURE: Failed to send successful registration email to {}. Error: {}", toEmail, e.getMessage(), e);
+            throw new RuntimeException("Failed to send successful registration email: " + e.getMessage(), e);
         }
     }
 
@@ -160,11 +162,12 @@ public class EmailService {
                 + "Best regards,\nThe Conduyt Team";
 
         try {
+            logger.info(">>> Attempting to send Password Reset OTP to: {}", toEmail);
             mailSenderService.sendEmail(fromEmail, fromName, toEmail, userName, subject, textContent, htmlContent);
-            logger.info("Password reset OTP email sent successfully to {}", toEmail);
+            logger.info(">>> Password reset OTP email sent successfully to {}", toEmail);
         } catch (Exception e) {
-            logger.error("Failed to send password reset OTP email to {}", toEmail, e);
-            throw new RuntimeException("Failed to send password reset OTP email", e);
+            logger.error(">>> CRITICAL EMAIL FAILURE: Failed to send password reset OTP email to {}. Error: {}", toEmail, e.getMessage(), e);
+            throw new RuntimeException("Failed to send password reset OTP email: " + e.getMessage(), e);
         }
     }
 }
