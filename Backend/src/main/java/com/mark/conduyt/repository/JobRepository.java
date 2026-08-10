@@ -25,4 +25,7 @@ public interface JobRepository extends JpaRepository<Job, Long>, JpaSpecificatio
     Page<Job> findByApplications_Freelancer(Freelancer freelancer, Pageable pageable);
 
     long countByClientAndStatus(Client client, JobStatus status);
+
+    // Add this to your repository
+    List<Job> findTop3ByStatusOrderByCreatedAtDesc(JobStatus status);
 }

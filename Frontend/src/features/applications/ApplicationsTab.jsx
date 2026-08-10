@@ -25,6 +25,7 @@ import toast from 'react-hot-toast';
 const FILTERS = [
   { key: 'all', label: 'All' },
   { key: 'pending', label: 'Pending' },
+  { key: 'shortlisted', label: 'Shortlisted' }, // FIX: Added Shortlisted filter
   { key: 'active', label: 'Active Contracts' },
   { key: 'completed', label: 'Completed' },
 ];
@@ -38,11 +39,21 @@ const STATUS_META = {
   WITHDRAWN: { label: 'Withdrawn', variant: 'secondary' },
 };
 
-function matchesFilter(status, filter) {
+// FIX: Now accepts the whole app object to read both application and job statuses
+function matchesFilter(app, filter) {
+  const appStatus = app.status ? app.status.toUpperCase() : 'SUBMITTED';
+  const jobStatus = app.jobStatus ? app.jobStatus.toUpperCase() : 'OPEN';
+
+  // If the application was accepted, but the actual job is now finished, it counts as completed
+  const isActuallyCompleted = appStatus === 'COMPLETED' || (appStatus === 'ACCEPTED' && jobStatus === 'COMPLETED');
+  const isActuallyActive = appStatus === 'ACCEPTED' && jobStatus !== 'COMPLETED';
+
   if (filter === 'all') return true;
-  if (filter === 'pending') return status === 'SUBMITTED' || status === 'SHORTLISTED';
-  if (filter === 'active') return status === 'ACCEPTED';
-  if (filter === 'completed') return status === 'COMPLETED';
+  if (filter === 'pending') return appStatus === 'SUBMITTED';
+  if (filter === 'shortlisted') return appStatus === 'SHORTLISTED';
+  if (filter === 'active') return isActuallyActive;
+  if (filter === 'completed') return isActuallyCompleted;
+
   return true;
 }
 
@@ -52,7 +63,7 @@ export default function ApplicationsTab() {
   const filter = useAppStore((s) => s.applicationFilter);
   const setFilter = useAppStore((s) => s.setApplicationFilter);
 
-  const [selectedApp, setSelectedApp] = useState(null); // For viewing cover letter & AI score details
+  const [selectedApp, setSelectedApp] = useState(null);
   const [withdrawApp, setWithdrawApp] = useState(null);
 
   // ================= FETCH APPLICATIONS =================
@@ -92,20 +103,21 @@ export default function ApplicationsTab() {
   });
 
   const list = applications ?? seedApplications;
-  const filtered = useMemo(() => list.filter((a) => matchesFilter(a.status, filter)), [list, filter]);
+  const filtered = useMemo(() => list.filter((a) => matchesFilter(a, filter)), [list, filter]);
 
+  // FIX: Update counts to use the new matchesFilter logic
   const counts = useMemo(
       () => ({
         all: list.length,
-        pending: list.filter((a) => matchesFilter(a.status, 'pending')).length,
-        active: list.filter((a) => matchesFilter(a.status, 'active')).length,
-        completed: list.filter((a) => matchesFilter(a.status, 'completed')).length,
+        pending: list.filter((a) => matchesFilter(a, 'pending')).length,
+        shortlisted: list.filter((a) => matchesFilter(a, 'shortlisted')).length,
+        active: list.filter((a) => matchesFilter(a, 'active')).length,
+        completed: list.filter((a) => matchesFilter(a, 'completed')).length,
       }),
       [list],
   );
 
   return (
-      // Widened layout from max-w-4xl to max-w-5xl
       <div className="mx-auto max-w-5xl w-full">
         <PageHeader
             title="My Applications"
@@ -238,12 +250,20 @@ export default function ApplicationsTab() {
 }
 
 function ApplicationCard({ app, onViewDetails, onWithdraw }) {
-  const statusKey = app.status ? app.status.toUpperCase() : 'SUBMITTED';
-  const meta = STATUS_META[statusKey] || { label: statusKey, variant: 'secondary' };
+  const baseStatus = app.status ? app.status.toUpperCase() : 'SUBMITTED';
+  const jobStatus = app.jobStatus ? app.jobStatus.toUpperCase() : 'OPEN';
 
-  const isPending = statusKey === 'SUBMITTED' || statusKey === 'SHORTLISTED';
-  const isHired = statusKey === 'ACCEPTED'; // maps to Hired / Active Contract
-  const isCompleted = statusKey === 'COMPLETED';
+  // FIX: Determine effective status based on both application and job state
+  let effectiveStatus = baseStatus;
+  if (baseStatus === 'ACCEPTED' && jobStatus === 'COMPLETED') {
+    effectiveStatus = 'COMPLETED';
+  }
+
+  const meta = STATUS_META[effectiveStatus] || { label: effectiveStatus, variant: 'secondary' };
+
+  const isPending = baseStatus === 'SUBMITTED' || baseStatus === 'SHORTLISTED';
+  const isHired = effectiveStatus === 'ACCEPTED'; // Maps to Active Contract
+  const isCompleted = effectiveStatus === 'COMPLETED';
 
   return (
       <Card className={cn(isHired && 'border-primary/40 ring-1 ring-primary/20')}>
@@ -260,7 +280,7 @@ function ApplicationCard({ app, onViewDetails, onWithdraw }) {
                 </span>
                 )}
 
-                {statusKey === 'REJECTED' && <span className="text-xs text-muted-foreground">No feedback provided</span>}
+                {baseStatus === 'REJECTED' && <span className="text-xs text-muted-foreground">No feedback provided</span>}
               </div>
 
               <h3 className="truncate font-display text-base font-bold text-foreground">{app.jobTitle}</h3>
@@ -361,9 +381,11 @@ function EmptyState({ filter }) {
   const copy = {
     all: "You haven't sent any applications yet. Once you apply to a job, it'll show up here.",
     pending: 'No pending applications right now.',
+    shortlisted: "None of your applications are currently shortlisted.", // FIX: Added Shortlisted copy
     active: 'No active contracts yet. Applications move here once a client hires you.',
     completed: "You haven't completed a job yet.",
   };
+
   return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center gap-2 py-14 text-center">

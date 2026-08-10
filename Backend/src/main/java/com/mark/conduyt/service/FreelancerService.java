@@ -1,10 +1,7 @@
 package com.mark.conduyt.service;
 
 
-import com.mark.conduyt.dto.FreelancerApplicationDTO;
-import com.mark.conduyt.dto.FreelancerPortfolioDTO;
-import com.mark.conduyt.dto.FreelancerProfileDTO;
-import com.mark.conduyt.dto.UserRegisterRequestDTO;
+import com.mark.conduyt.dto.*;
 import com.mark.conduyt.entity.*;
 import com.mark.conduyt.enums.ApplicationStatus;
 import com.mark.conduyt.repository.ApplicationRepository;
@@ -12,12 +9,16 @@ import com.mark.conduyt.repository.FreelancerRepository;
 import com.mark.conduyt.repository.SkillTagRepository;
 import com.mark.conduyt.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class FreelancerService {
 
     private final FreelancerRepository freelancerRepository;
@@ -72,6 +74,61 @@ public class FreelancerService {
         emailService.sendRegistrationOtpEmail(user.getEmail(),otp,user.getFullName(), request.getTargetRole());
     }
 
+    @Transactional(readOnly = true)
+    public PublicFreelancerProfileDTO getPublicFreelancerProfile(String slug) {
+        User user = userRepository.findByProfileSlug(slug)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Freelancer freelancer = freelancerRepository.findByUser(user)
+                .orElseThrow(() -> new RuntimeException("Freelancer profile not found"));
+
+        PublicFreelancerProfileDTO dto = new PublicFreelancerProfileDTO();
+        dto.setDisplayName(user.getFullName());
+        dto.setTitle(freelancer.getTitle());
+        dto.setBio(freelancer.getBio());
+        dto.setPfpUrl(user.getPfpUrl());
+        dto.setEmail(user.getEmail());
+
+        // --- Calculate Analytics ---
+        int jobsDone = 0;
+        double earnings = 0.0;
+
+        if (freelancer.getApplications() != null) {
+            for (var app : freelancer.getApplications()) {
+                // Replace "HIRED" / "COMPLETED" with your exact enum values for a finished job
+                String status = app.getStatus() != null ? app.getStatus().name() : "";
+                if (status.equalsIgnoreCase("HIRED") || status.equalsIgnoreCase("COMPLETED") || status.equalsIgnoreCase("ACCEPTED")) {
+                    jobsDone++;
+                    if (app.getJob() != null && app.getJob().getFixedBudget() != null) {
+                        earnings += app.getJob().getFixedBudget();
+                    }
+                }
+            }
+        }
+        dto.setTotalJobsDone(jobsDone);
+        dto.setTotalEarnings(earnings);
+
+        // External Links
+        dto.setGithubUrl(freelancer.getGithubUrl());
+        dto.setLinkedinUrl(freelancer.getLinkedinUrl());
+        dto.setPortfolioUrl(freelancer.getPortfolioUrl());
+        dto.setCvUrl(freelancer.getCvUrl());
+
+        // Map Skills
+        if (freelancer.getSkills() != null) {
+            dto.setSkills(freelancer.getSkills().stream()
+                    .map(skill -> skill.getName()) // Adjust if you use getLabel()
+                    .collect(java.util.stream.Collectors.toList()));
+        } else {
+            dto.setSkills(new java.util.ArrayList<>());
+        }
+
+        // Check for Dual Account
+        dto.setHasClientProfile(user.getClient() != null);
+
+        return dto;
+    }
+
     private SkillTag getOrCreateSkill(String skillName) {
         String normalizedName = skillName.trim().toUpperCase();
         return skillTagRepository.findByNameIgnoreCase(normalizedName)
@@ -82,6 +139,8 @@ public class FreelancerService {
                     return skillTagRepository.save(newTag);
                 });
     }
+
+    @Transactional(readOnly = true)
     public FreelancerProfileDTO getProfile(String email) {
         User user = userService.getUserByEmail(email); // Assuming userService has this, or use userRepository
         Freelancer freelancer = freelancerRepository.findByUser(user)
@@ -101,6 +160,41 @@ public class FreelancerService {
                     .map(tag -> tag.getLabel() != null ? tag.getLabel() : tag.getName())
                     .collect(Collectors.toList());
             dto.setSkills(skillNames);
+        }
+
+        return dto;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<FreelancerProfileDTO> getPaginatedFreelancers(Pageable pageable) {
+        return freelancerRepository.findAll(pageable).map(this::mapToProfileDTO);
+    }
+
+    private FreelancerProfileDTO mapToProfileDTO(Freelancer freelancer) {
+        FreelancerProfileDTO dto = new FreelancerProfileDTO();
+
+        // 1. Map Freelancer native fields
+        dto.setId(freelancer.getId());
+        dto.setProfessionalTitle(freelancer.getTitle());
+        dto.setBio(freelancer.getBio());
+
+        // 2. Map fields from the central User identity
+        if (freelancer.getUser() != null) {
+            dto.setFirstName(freelancer.getUser().getFirstName());
+            dto.setLastName(freelancer.getUser().getLastName());
+            dto.setAvatarUrl(freelancer.getUser().getPfpUrl());
+            dto.setSlug(freelancer.getUser().getProfileSlug());
+            dto.setEmail(freelancer.getUser().getEmail());
+        }
+
+        // 3. Map Set<SkillTag> to List<String>
+        // (Assuming your SkillTag entity has a getName() method. Change to getTagName() if needed)
+        if (freelancer.getSkills() != null) {
+            dto.setSkills(freelancer.getSkills().stream()
+                    .map(skill -> skill.getName())
+                    .collect(Collectors.toList()));
+        } else {
+            dto.setSkills(new ArrayList<>());
         }
 
         return dto;
@@ -221,9 +315,10 @@ public class FreelancerService {
         freelancerRepository.save(freelancer);
     }
 
-    // ================= GET APPLICATIONS =================
     public List<FreelancerApplicationDTO> getApplications(String email) {
-        User user = userService.getUserByEmail(email);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         Freelancer freelancer = freelancerRepository.findByUser(user)
                 .orElseThrow(() -> new RuntimeException("Freelancer profile not found"));
 
@@ -239,7 +334,17 @@ public class FreelancerService {
             dto.setClientEmail(app.getJob().getClient().getUser().getEmail());
             dto.setContactNo(app.getJob().getContactNo());
             dto.setAppliedDate(app.getAppliedAt());
+
+            // Map the Application Status
             dto.setStatus(app.getStatus().name());
+
+            // FIX: Map the associated Job's Status!
+            if (app.getJob().getStatus() != null) {
+                dto.setJobStatus(app.getJob().getStatus().name());
+            } else {
+                dto.setJobStatus("OPEN"); // Fallback
+            }
+
             dto.setAiCompatibilityScore(app.getAiCompatibilityScore());
             dto.setPitch(app.getPitch());
             dto.setJobDescription(app.getJob().getDescription());
@@ -299,5 +404,35 @@ public class FreelancerService {
 
         freelancer.setNotifyOnMatchingJobs(notificationsEnabled != null ? notificationsEnabled : true);
         freelancerRepository.save(freelancer);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PublicFreelancerProfileDTO> getFeaturedFreelancers() {
+        Pageable top3 = PageRequest.of(0, 3);
+        Page<Freelancer> freelancers = freelancerRepository.findRandomFeatured(top3);
+
+        return freelancers.getContent().stream().map(f -> {
+            PublicFreelancerProfileDTO dto = new PublicFreelancerProfileDTO();
+
+            // Basic Info
+            dto.setDisplayName(f.getUser().getFullName());
+            dto.setTitle(f.getTitle());
+            dto.setPfpUrl(f.getUser().getPfpUrl());
+            dto.setSlug(f.getUser().getProfileSlug());
+
+            // Analytics (Calculating jobs done from app history)
+            long jobsDone = f.getApplications().stream()
+                    .filter(a -> a.getStatus() == ApplicationStatus.ACCEPTED)
+                    .count();
+            dto.setTotalJobsDone((int) jobsDone);
+
+            // Skills
+            dto.setSkills(f.getSkills().stream()
+                    .map(s -> s.getName())
+                    .limit(3) // Just show first 3 for the homepage card
+                    .collect(Collectors.toList()));
+
+            return dto;
+        }).collect(Collectors.toList());
     }
 }

@@ -9,35 +9,35 @@ import JobManagementView from "@/components/dashboard/JobManagementView";
 import AnalyticsView from "@/components/dashboard/AnalyticsView";
 import SecurityView from "@/components/dashboard/SecurityView";
 import ExtrasView from "@/components/dashboard/ExtrasView";
+import Footer from "@/components/Footer.jsx"; // Added to match Freelancer side
 
 export default function ClientDashboard() {
   return (
-    <Routes>
-      <Route element={<ClientDashboardLayout />}>
-        
-        {/* Default dashboard page */}
-        <Route
-          index
-          element={<Navigate to="overview" replace />}
-        />
+      <>
+        <Routes>
+          <Route element={<ClientDashboardLayout />}>
 
-        {/* Child Routes */}
-        <Route path="overview" element={<OverviewTab />} />
-        <Route path="profile" element={<ClientProfile />} />
-        <Route path="personal" element={<PersonalDetailsView />} />
-        <Route path="company" element={<CompanyDetailsView />} />
-        <Route path="jobs/*" element={<JobManagementView />} />
-        <Route path="analytics" element={<AnalyticsView />} />
-        <Route path="security" element={<SecurityView />} />
-        <Route path="extras" element={<ExtrasView />} />
+            {/* FIX 1: Use absolute path for index redirect to prevent recursive loops */}
+            <Route index element={<Navigate to="/dashboard/personal" replace />}/>
 
-        {/* Fallback */}
-        <Route
-          path="*"
-          element={<Navigate to="overview" replace />}
-        />
+            {/* Child Routes */}
+            <Route path="overview" element={<OverviewTab />} />
+            <Route path="personal" element={<PersonalDetailsView />} />
+            <Route path="company" element={<CompanyDetailsView />} />
+            <Route path="jobs/*" element={<JobManagementView />} />
+            <Route path="analytics" element={<AnalyticsView />} />
+            <Route path="security" element={<SecurityView />} />
+            <Route path="extras" element={<ExtrasView />} />
 
-      </Route>
-    </Routes>
+            {/* FIX 2: Use absolute path for catch-all redirect */}
+            <Route
+                path="*"
+                element={<Navigate to="/dashboard/personal" replace />}
+            />
+
+          </Route>
+        </Routes>
+        <Footer />
+      </>
   );
 }

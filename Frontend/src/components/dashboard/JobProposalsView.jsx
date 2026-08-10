@@ -23,8 +23,6 @@ export default function JobProposalsView({ jobId: propJobId, onBack }) {
         const fetchProposals = async () => {
             setIsLoading(true);
             try {
-                // Use the existing Smart View endpoint!
-                // Because you are the owner, it will include all applications in the DTO.
                 const response = await axiosInstance.get(`/api/jobs/${jobId}`);
 
                 if (isMounted && response.data?.data) {
@@ -36,7 +34,6 @@ export default function JobProposalsView({ jobId: propJobId, onBack }) {
                         budget: jobData.fixedBudget
                     });
 
-                    // Map the backend ApplicationDTO to our frontend state
                     const mappedProposals = (jobData.applications || []).map(app => ({
                         id: app.id,
                         freelancer: {
@@ -47,13 +44,11 @@ export default function JobProposalsView({ jobId: propJobId, onBack }) {
                         },
                         pitch: app.pitch,
                         aiCompatibilityScore: app.aiCompatibilityScore,
-                        status: app.status, // "SUBMITTED", "SHORTLISTED", "ACCEPTED", "REJECTED", "WITHDRAWN"
+                        status: app.status,
                         appliedAt: app.appliedAt
                     }));
 
-                    // Sort by AI score (highest first)
                     mappedProposals.sort((a, b) => (b.aiCompatibilityScore || 0) - (a.aiCompatibilityScore || 0));
-
                     setProposals(mappedProposals);
                 }
             } catch (err) {
@@ -73,11 +68,25 @@ export default function JobProposalsView({ jobId: propJobId, onBack }) {
         setProposals(prev =>
             prev.map(p => p.id === proposalId ? { ...p, status: newStatus } : p)
         );
+
         try {
-            // Using the endpoint we created in ClientController
-            await axiosInstance.patch(`/api/clients/candidates/${proposalId}/status`, { status: newStatus });
-            toast.success(`Proposal marked as ${newStatus}`);
+            // 1. Target the NEW, dedicated proposal action endpoint
+            await axiosInstance.patch(`/api/clients/proposals/${proposalId}/action`, { status: newStatus });
+
+            // 2. If Hiring, chain the second API call to update the Job Status
+            if (newStatus === "ACCEPTED") {
+                await axiosInstance.patch(`/api/jobs/${jobId}/status`, { status: "IN_PROGRESS" });
+
+                toast.success("Candidate Hired! Job is now In Progress.");
+
+                // Smoothly redirect back to jobs list after 2 seconds
+                setTimeout(() => navigate("/dashboard/jobs"), 2000);
+            } else {
+                toast.success(`Proposal marked as ${newStatus}`);
+            }
+
         } catch (err) {
+            console.error("Status update failed:", err);
             toast.error("Failed to sync status with server.");
             // Revert on failure by refreshing the page data
             window.location.reload();
@@ -87,7 +96,7 @@ export default function JobProposalsView({ jobId: propJobId, onBack }) {
     if (isLoading) {
         return (
             <div className="flex h-64 w-full flex-col items-center justify-center gap-4 bg-white rounded-xl border border-slate-200">
-                <Loader2 className="h-8 w-8 animate-spin text-[#09D66D]" />
+                <Loader2 className="h-8 w-8 animate-spin text-[#1798D7]" />
                 <p className="text-sm font-medium text-slate-500">Loading candidate proposals...</p>
             </div>
         );
@@ -129,7 +138,7 @@ export default function JobProposalsView({ jobId: propJobId, onBack }) {
 
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 pb-5 border-b border-slate-100">
 
-                                {/* Freelancer Identity (Clickable Profile Link) */}
+                                {/* Freelancer Identity */}
                                 <div className="flex items-center gap-4">
                                     <div className="h-14 w-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center font-bold border-2 border-slate-100 overflow-hidden flex-shrink-0">
                                         {proposal.freelancer.pfpUrl ? (
@@ -187,7 +196,6 @@ export default function JobProposalsView({ jobId: propJobId, onBack }) {
                                     View Full Profile & Portfolio →
                                 </button>
 
-                                {/* FIX: Hide interactive buttons if withdrawn */}
                                 {proposal.status === "WITHDRAWN" ? (
                                     <div className="flex items-center gap-2 text-sm font-bold text-slate-400 bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl">
                                         <Ban size={16} /> Candidate Withdrew Application

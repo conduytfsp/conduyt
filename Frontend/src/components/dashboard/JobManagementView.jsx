@@ -1,28 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import {
-  Plus, Eye, FileText, CheckCircle, XCircle,
+  Plus, Eye, CheckCircle, XCircle, UserCircle,
   BriefcaseBusiness, CalendarDays, Users, Mail,
-  Loader2, AlertCircle, Sparkles, ExternalLink
+  Loader2, AlertCircle, Sparkles, ExternalLink, FileText
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { useAxiosInstance } from "@/config/axiosConfig";
 import JobProposalsView from "./JobProposalsView";
-
-const INITIAL_MOCK_JOBS = [
-  {
-    id: 1,
-    title: "Senior React Developer",
-    budget: "₹60,000",
-    budgetType: "Fixed",
-    postedDate: "01 Aug 2026",
-    status: "Open",
-    proposals: 42,
-    freelancer: null,
-    description: "Looking for an experienced React developer to build an enterprise dashboard with real-time analytics charts and Tailwind CSS integration.",
-    aiGenSummary: "Build enterprise React dashboard with Tailwind and chart libraries. Requires strong state management skills."
-  }
-];
 
 // ================= 1. ROUTER WRAPPER =================
 export default function JobManagementRouter() {
@@ -44,7 +29,7 @@ function JobManagementList() {
   const [error, setError] = useState(null);
   const [expandedJobId, setExpandedJobId] = useState(null);
 
-  // Fetch Jobs
+  // Fetch Jobs from Backend only
   useEffect(() => {
     let isMounted = true;
     const fetchJobs = async () => {
@@ -53,40 +38,48 @@ function JobManagementList() {
       try {
         const response = await axiosInstance.get("/api/jobs/client");
         if (response.data && isMounted) {
-          // Spring Boot paginated response usually wraps the array in 'content'
           const rawData = response.data.data || response.data;
           const fetchedJobs = Array.isArray(rawData) ? rawData : rawData.content || [];
 
-          const mappedJobs = fetchedJobs.map((job) => ({
-            id: job.id,
-            title: job.title,
-            // Format budget safely
-            budget: job.fixedBudget ? `₹${job.fixedBudget.toLocaleString("en-IN")}` : "₹0",
-            budgetType: "Fixed",
+          const mappedJobs = fetchedJobs.map((job) => {
+            const formattedStatus = job.status
+                ? job.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
+                : "Open";
 
-            // Format Spring Boot LocalDateTime string to readable date
-            postedDate: job.createdAt
-                ? new Date(job.createdAt).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' })
-                : "Recently",
+            let assignedFreelancer = null;
+            if (job.freelancer) {
+              assignedFreelancer = {
+                id: job.freelancer.id,
+                name: job.freelancer.name || job.freelancer.displayName || "Assigned Freelancer",
+                slug: job.freelancer.slug,
+                email: job.freelancer.email,
+                pfpUrl: job.freelancer.pfpUrl || job.freelancer.profilePicture
+              };
+            }
 
-            status: job.status ? job.status.charAt(0) + job.status.slice(1).toLowerCase().replace("_", " ") : "Open",
+            return {
+              id: job.id,
+              title: job.title,
+              budget: job.fixedBudget ? `₹${job.fixedBudget.toLocaleString("en-IN")}` : "₹0",
+              budgetType: "Fixed",
+              postedDate: job.createdAt
+                  ? new Date(job.createdAt).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' })
+                  : "Recently",
+              status: formattedStatus,
+              proposals: job.totalProposals || 0,
+              freelancer: assignedFreelancer,
+              description: job.description || "Description not provided in summary view.",
+              aiGenSummary: job.aiGenSummary || null
+            };
+          });
 
-            // FIX: Match the exact field from ClientJobDTO
-            proposals: job.totalProposals || 0,
-
-            freelancer: job.freelancer || null,
-            description: job.description || "Description not provided in summary view.",
-            aiGenSummary: job.aiGenSummary || null
-          }));
-
-          setJobs(mappedJobs.length > 0 ? mappedJobs : INITIAL_MOCK_JOBS);
+          setJobs(mappedJobs);
         }
       } catch (err) {
-        console.warn("Backend /api/jobs/client offline. Falling back to local/mock data.");
+        console.error("Failed to fetch jobs from backend:", err);
         if (isMounted) {
-          setError("Offline mode: Managing jobs locally.");
-          const savedJobs = localStorage.getItem("clientJobs");
-          setJobs(savedJobs ? JSON.parse(savedJobs) : INITIAL_MOCK_JOBS);
+          setError("Could not load your job postings from the server.");
+          setJobs([]);
         }
       } finally {
         if (isMounted) setIsLoading(false);
@@ -95,10 +88,6 @@ function JobManagementList() {
     fetchJobs();
     return () => { isMounted = false; };
   }, [axiosInstance]);
-
-  useEffect(() => {
-    if (jobs.length > 0) localStorage.setItem("clientJobs", JSON.stringify(jobs));
-  }, [jobs]);
 
   const updateJobStatus = async (id, newStatus) => {
     setJobs(jobs.map((job) => (job.id === id ? { ...job, status: newStatus } : job)));
@@ -114,7 +103,7 @@ function JobManagementList() {
 
   const getStatusStyle = (status) => {
     switch (status) {
-      case "Open": return "bg-blue-50 text-blue-700 border-blue-100";
+      case "Open": return "bg-emerald-50 text-emerald-700 border-emerald-100";
       case "In Progress": return "bg-amber-50 text-amber-700 border-amber-100";
       case "Completed": return "bg-emerald-50 text-[#09D66D] border-emerald-100";
       case "Cancelled": return "bg-rose-50 text-rose-700 border-rose-100";
@@ -145,14 +134,14 @@ function JobManagementList() {
           </div>
           <button
               onClick={() => navigate("/post-job")}
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#09D66D] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#06934A] active:scale-95 self-start md:self-auto"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#09D66D] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#07B85D] active:scale-95 self-start md:self-auto"
           >
             <Plus size={18} /> Post New Job
           </button>
         </div>
 
         {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-xs font-semibold text-amber-700 border border-amber-200 shadow-sm">
+            <div className="flex items-center gap-2 rounded-lg bg-rose-50 p-3 text-xs font-semibold text-rose-700 border border-rose-200 shadow-sm">
               <AlertCircle size={16} />
               <span>{error}</span>
             </div>
@@ -165,10 +154,9 @@ function JobManagementList() {
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <div className="space-y-2">
                     <div className="flex items-center gap-3 flex-wrap">
-                      {/* FIX: Clickable Job Title */}
                       <h3
                           onClick={() => navigate(`/jobs/${job.id}`)}
-                          className="text-lg font-bold text-gray-900 hover:text-[#1798D7] transition-colors cursor-pointer flex items-center gap-1.5"
+                          className="text-lg font-bold text-gray-900 hover:text-[#09D66D] transition-colors cursor-pointer flex items-center gap-1.5"
                       >
                         {job.title}
                       </h3>
@@ -202,7 +190,7 @@ function JobManagementList() {
                       onClick={() => toggleExpandJob(job.id)}
                       className="text-xs font-bold text-gray-600 hover:text-gray-900 flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
-                    <FileText size={14} className="text-[#1798D7]" />
+                    <FileText size={14} className="text-[#09D66D]" />
                     {expandedJobId === job.id ? "Hide Job Description" : "View Job Description & AI Summary"}
                   </button>
 
@@ -230,37 +218,40 @@ function JobManagementList() {
                       <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2.5">Assigned Freelancer</p>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-emerald-100 text-[#09D66D] flex items-center justify-center font-bold text-sm border border-emerald-200">
-                            {job.freelancer.name.charAt(0)}
+                          <div className="h-10 w-10 rounded-full bg-emerald-100 text-[#09D66D] flex items-center justify-center font-bold text-sm border border-emerald-200 overflow-hidden shrink-0">
+                            {job.freelancer.pfpUrl ? (
+                                <img src={job.freelancer.pfpUrl} alt={job.freelancer.name} className="w-full h-full object-cover" />
+                            ) : (
+                                job.freelancer.name?.charAt(0)?.toUpperCase() || "F"
+                            )}
                           </div>
                           <div>
                             <button
                                 onClick={() => navigate(`/freelancer/${job.freelancer.slug || job.freelancer.id}`)}
-                                className="text-sm font-bold text-gray-900 hover:text-[#1798D7] hover:underline cursor-pointer text-left"
+                                className="text-sm font-bold text-gray-900 hover:text-[#09D66D] hover:underline cursor-pointer text-left transition-colors"
                             >
                               {job.freelancer.name}
                             </button>
-                            <p className="text-xs text-gray-500 flex items-center gap-1"><Mail size={12}/> {job.freelancer.email}</p>
+                            {job.freelancer.email && (
+                                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><Mail size={12}/> {job.freelancer.email}</p>
+                            )}
                           </div>
                         </div>
-                        {job.status === "Completed" && (
-                            <button
-                                onClick={() => navigate(`/freelancer/${job.freelancer.slug || job.freelancer.id}`)}
-                                className="text-xs font-semibold bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-full hover:bg-emerald-200 transition-colors cursor-pointer"
-                            >
-                              View Verified Contact Details →
-                            </button>
-                        )}
+                        <button
+                            onClick={() => navigate(`/freelancer/${job.freelancer.slug || job.freelancer.id}`)}
+                            className="hidden sm:flex text-xs font-semibold bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer items-center gap-1.5"
+                        >
+                          <UserCircle size={14} /> View Profile
+                        </button>
                       </div>
                     </div>
                 )}
 
                 {/* Action Buttons */}
                 <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
-                  {/* FIX: New Job Page Button */}
                   <button
                       onClick={() => navigate(`/jobs/${job.id}`)}
-                      className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 transition-colors cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200"
+                      className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-[#09D66D] transition-colors cursor-pointer bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200"
                   >
                     <ExternalLink size={14} /> View Job Page
                   </button>
@@ -269,7 +260,7 @@ function JobManagementList() {
                       <>
                         <button
                             onClick={() => navigate(`/dashboard/jobs/${job.id}/proposals`)}
-                            className="flex items-center gap-1.5 text-xs font-bold text-[#1798D7] hover:text-[#004f70] transition-colors cursor-pointer bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100"
+                            className="flex items-center gap-1.5 text-xs font-bold text-[#09D66D] hover:text-[#07B85D] transition-colors cursor-pointer bg-emerald-50/50 px-3 py-1.5 rounded-lg border border-emerald-100"
                         >
                           <Eye size={14} /> View Proposals ({job.proposals})
                         </button>
@@ -285,18 +276,18 @@ function JobManagementList() {
                   {job.status === "In Progress" && (
                       <button
                           onClick={() => updateJobStatus(job.id, "Completed")}
-                          className="flex items-center gap-1.5 text-xs font-bold text-[#09D66D] hover:text-[#06934A] transition-colors cursor-pointer bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100"
+                          className="flex items-center gap-1.5 text-xs font-bold text-[#09D66D] hover:text-[#06934A] transition-colors cursor-pointer bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 hover:border-[#09D66D]"
                       >
                         <CheckCircle size={14} /> Mark as Completed
                       </button>
                   )}
 
-                  {job.status === "Completed" && (
+                  {job.status === "Completed" && job.freelancer && (
                       <button
-                          onClick={() => navigate(`/freelancer/${job.freelancer?.slug || job.freelancer?.id}`)}
+                          onClick={() => navigate(`/freelancer/${job.freelancer.slug || job.freelancer.id}`)}
                           className="flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:text-gray-900 transition-colors cursor-pointer bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200"
                       >
-                        <FileText size={14} /> View Contract & Contact Info
+                        <UserCircle size={14} /> View Freelancer Profile
                       </button>
                   )}
 

@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ClientService {
 
     private final ClientRepository clientRepository;
@@ -137,6 +138,58 @@ public class ClientService {
             }
         }
         clientRepository.save(client);
+    }
+
+    @Transactional(readOnly = true)
+    public PublicClientProfileDTO getPublicClientProfile(String slug) {
+        User user = userRepository.findByProfileSlug(slug)
+                .orElseThrow(() -> new RuntimeException("Client not found"));
+
+        Client client = clientRepository.findByUser(user)
+                .orElseThrow(() -> new RuntimeException("Client profile not found"));
+
+        PublicClientProfileDTO dto = new PublicClientProfileDTO();
+        dto.setDisplayName(client.getDisplayName());
+        dto.setClientType(client.getClientType().name());
+        dto.setPfpUrl(user.getPfpUrl());
+        dto.setEmail(user.getEmail());
+
+        // --- Check for Dual Account ---
+        dto.setHasFreelancerProfile(user.getFreelancer() != null); // <-- ADD THIS LINE
+
+        // --- Calculate Analytics ---
+        int jobsPosted = 0;
+        int totalHires = 0;
+        double totalSpent = 0.0;
+
+        if (client.getJobs() != null) {
+            jobsPosted = client.getJobs().size();
+            for (var job : client.getJobs()) {
+                if (job.getStatus() != null && job.getStatus().name().equalsIgnoreCase("COMPLETED")) {
+                    totalHires++;
+                    if (job.getFixedBudget() != null) {
+                        totalSpent += job.getFixedBudget();
+                    }
+                }
+            }
+        }
+
+        dto.setTotalJobsPosted(jobsPosted);
+        dto.setTotalHires(totalHires);
+        dto.setTotalSpent(totalSpent);
+
+        // --- Map Company Data ---
+        if (client.getClientType() == com.mark.conduyt.enums.ClientType.COMPANY && client.getCompany() != null) {
+            Company company = client.getCompany();
+            dto.setVerified(company.isVerified());
+            dto.setWebsiteUrl(company.getWebsiteUrl());
+            dto.setContactNumber(company.getContactNumber());
+            dto.setAddress(company.getAddress());
+        } else {
+            dto.setVerified(false);
+        }
+
+        return dto;
     }
 
     @Transactional
@@ -261,6 +314,26 @@ public class ClientService {
             app.setStatus(ApplicationStatus.SUBMITTED);
         }
 
+        applicationRepository.save(app);
+    }
+
+    @Transactional
+    public void actionProposal(String email, Long applicationId, ApplicationStatus newStatus) {
+        Client client = findClientByEmail(email);
+        Application app = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new RuntimeException("Application not found"));
+
+        // Security check: Ensure the client owns the job this application is for
+        if (!app.getJob().getClient().getId().equals(client.getId())) {
+            throw new RuntimeException("Unauthorized to modify this proposal");
+        }
+
+        // Prevent modifying withdrawn applications
+        if (app.getStatus() == ApplicationStatus.WITHDRAWN) {
+            throw new RuntimeException("Cannot modify a withdrawn application");
+        }
+
+        app.setStatus(newStatus);
         applicationRepository.save(app);
     }
 

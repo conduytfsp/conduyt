@@ -1,6 +1,7 @@
 package com.mark.conduyt.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.mark.conduyt.enums.JobStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -60,6 +61,7 @@ public class Job {
     private Set<SkillTag> requiredSkills = new HashSet<>();
 
     // Applications received for this job
+    @JsonIgnore
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Application> applications = new ArrayList<>();
 

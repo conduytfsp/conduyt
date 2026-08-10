@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAxiosInstance } from "@/config/axiosConfig";
 import Navbar from "@/components/Navbar.jsx";
-import Footer from "@/components/layout/footer.jsx";
+import Footer from "@/components/Footer.jsx";
 import SearchBar from "../components/SearchBar";
 import FilterSidebar from "../components/FilterSidebar";
 import JobList from "../components/JobList";

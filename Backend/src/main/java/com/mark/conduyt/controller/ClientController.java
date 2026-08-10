@@ -2,6 +2,7 @@ package com.mark.conduyt.controller;
 
 import com.mark.conduyt.dto.*;
 import com.mark.conduyt.entity.Client;
+import com.mark.conduyt.enums.ApplicationStatus;
 import com.mark.conduyt.service.AnalyticsService;
 import com.mark.conduyt.service.ClientService;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
@@ -131,5 +133,31 @@ public class ClientController {
         clientService.updateApplicationStatus(email, applicationId, newStatus);
 
         return ResponseEntity.ok(new ApiResponse<>(true, "Status updated successfully", null));
+    }
+
+    // ================= 7. GET PUBLIC CLIENT PROFILE =================
+    @GetMapping("/public/{slug}")
+    public ResponseEntity<PublicClientProfileDTO> getPublicProfile(@PathVariable String slug) {
+        PublicClientProfileDTO profile = clientService.getPublicClientProfile(slug);
+        return ResponseEntity.ok(profile);
+    }
+
+    // ================= ACTION PROPOSAL (ACCEPT/REJECT/SHORTLIST) =================
+    @PatchMapping("/proposals/{proposalId}/action")
+    public ResponseEntity<ApiResponse<Void>> actionProposal(
+            @PathVariable Long proposalId,
+            @RequestBody Map<String, String> payload,
+            Principal principal) {
+
+        try {
+            String statusStr = payload.get("status");
+            // Automatically converts "ACCEPTED", "REJECTED", "SHORTLISTED" into the Enum
+            ApplicationStatus status = ApplicationStatus.valueOf(statusStr.toUpperCase());
+
+            clientService.actionProposal(principal.getName(), proposalId, status);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Proposal " + statusStr + " successfully", null));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ApiResponse<>(false, "Invalid status provided", null));
+        }
     }
 }

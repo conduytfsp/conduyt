@@ -9,7 +9,7 @@ import {
 import { useAxiosInstance } from "@/config/axiosConfig";
 import { useAppStore } from "@/store/useAppStore";
 import Navbar from "@/components/Navbar.jsx";
-import Footer from "@/components/layout/footer.jsx";
+import Footer from "@/components/Footer.jsx";
 import { formatDistanceToNow } from "date-fns";
 
 export default function JobDetail() {

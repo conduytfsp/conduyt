@@ -6,7 +6,7 @@ import ApplicationsTab from '@/features/applications/ApplicationsTab';
 import AnalyticsTab from '@/features/analytics/AnalyticsTab';
 import SecurityTab from '@/features/security/SecurityTab';
 import FreelancerExtrasView from '@/components/layout/FreelancerExtrasView'; // FIX: Import the new component
-import Footer from '../components/layout/Footer';
+import Footer from '../components/Footer.jsx';
 
 /**
  * FreelancerDashboard

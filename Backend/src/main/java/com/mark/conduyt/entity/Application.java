@@ -1,6 +1,7 @@
 package com.mark.conduyt.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.mark.conduyt.enums.ApplicationStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -23,11 +24,13 @@ public class Application {
     private Long id;
 
     // Link to the Job being applied for
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_id", nullable = false)
     private Job job;
 
     // Link to the Freelancer who applied
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "freelancer_id", nullable = false)
     private Freelancer freelancer;

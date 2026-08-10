@@ -1,5 +1,6 @@
 package com.mark.conduyt.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.mark.conduyt.enums.AccountStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -45,10 +46,12 @@ public class User {
 
     // Optional Freelancer Profile (1-to-1)
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private Freelancer freelancer;
 
     // Optional Client Profile (1-to-1)
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private Client client;
 
     public String getFullName() {

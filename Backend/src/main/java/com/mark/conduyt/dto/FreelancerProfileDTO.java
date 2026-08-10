@@ -14,4 +14,7 @@ public class FreelancerProfileDTO {
     private String avatarUrl;
     private String email;
     private boolean emailVerified;
+    private String slug;
+    private Long id;
 }
+

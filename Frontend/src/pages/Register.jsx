@@ -149,8 +149,9 @@ function Register() {
         requestData.skillNames = skills.map(s => s.name);
       } else {
         requestData.clientType = formData.clientType;
-        requestData.contactNumber = formData.contactNumber;
+        // Only include contactNumber if clientType is COMPANY per updated requirements
         if (formData.clientType === "COMPANY") {
+          requestData.contactNumber = formData.contactNumber;
           requestData.companyName = formData.companyName;
           requestData.websiteUrl = formData.websiteUrl; // FIX: Matches DTO
           requestData.companyAddress = formData.companyAddress;
@@ -453,10 +454,13 @@ function Register() {
                                 </button>
                               </div>
 
-                              <div>
-                                <label className={labelStyles}>Contact Number *</label>
-                                <input name="contactNumber" type="tel" required placeholder="+1 (555) 000-0000" value={formData.contactNumber} onChange={handleChange} className={inputStyles} />
-                              </div>
+                              {/* Contact number is only required/shown for Company per DB specs */}
+                              {formData.clientType === "COMPANY" && (
+                                  <div>
+                                    <label className={labelStyles}>Contact Number *</label>
+                                    <input name="contactNumber" type="tel" required placeholder="+1 (555) 000-0000" value={formData.contactNumber} onChange={handleChange} className={inputStyles} />
+                                  </div>
+                              )}
 
                               {formData.clientType === "COMPANY" && (
                                   <div className="mt-6 space-y-4 rounded-2xl border border-slate-100 bg-slate-50 p-6">
@@ -464,15 +468,9 @@ function Register() {
                                       <label className={labelStyles}>Company Logo</label>
                                       <input name="companyLogo" type="file" accept="image/*" onChange={handleChange} className="w-full text-sm text-slate-500 file:mr-4 file:rounded-full file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-[#09D66D] hover:file:bg-emerald-100" />
                                     </div>
-                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                      <div>
-                                        <label className={labelStyles}>Company Name *</label>
-                                        <input name="companyName" type="text" required placeholder="Acme Corp" value={formData.companyName} onChange={handleChange} className={inputStyles} />
-                                      </div>
-                                      <div>
-                                        <label className={labelStyles}>Your Role *</label>
-                                        <input name="companyRole" type="text" required placeholder="Hiring Manager" value={formData.companyRole} onChange={handleChange} className={inputStyles} />
-                                      </div>
+                                    <div>
+                                      <label className={labelStyles}>Company Name *</label>
+                                      <input name="companyName" type="text" required placeholder="Acme Corp" value={formData.companyName} onChange={handleChange} className={inputStyles} />
                                     </div>
                                     <div>
                                       <label className={labelStyles}>Website URL *</label>
@@ -484,7 +482,7 @@ function Register() {
                                     </div>
                                     <div>
                                       <label className={labelStyles}>GSTIN / Tax ID *</label>
-                                      <input name="gstin" type="text" required placeholder="Required for billing" value={formData.gstin} onChange={handleChange} className={inputStyles} />
+                                      <input name="gstin" type="text" required placeholder="Required for verification" value={formData.gstin} onChange={handleChange} className={inputStyles} />
                                     </div>
                                   </div>
                               )}

@@ -1,15 +1,13 @@
 package com.mark.conduyt.service;
 
-import com.mark.conduyt.dto.ApplicationDTO;
-import com.mark.conduyt.dto.ClientJobDTO;
-import com.mark.conduyt.dto.FreelancerJobDTO;
-import com.mark.conduyt.dto.JobDetailDTO;
+import com.mark.conduyt.dto.*;
 import com.mark.conduyt.entity.Application;
 import com.mark.conduyt.entity.Client;
 import com.mark.conduyt.entity.Freelancer;
 import com.mark.conduyt.entity.Job;
 import com.mark.conduyt.entity.SkillTag;
 import com.mark.conduyt.entity.User;
+import com.mark.conduyt.enums.JobStatus;
 import com.mark.conduyt.repository.ClientRepository;
 import com.mark.conduyt.repository.FreelancerRepository;
 import com.mark.conduyt.repository.JobRepository;
@@ -20,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
@@ -27,6 +26,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class JobFetchService {
 
     private final JobRepository jobRepository;
@@ -38,11 +38,9 @@ public class JobFetchService {
     // 1. GET SINGLE JOB DETAILS (Smart View)
     // ==========================================
     public JobDetailDTO getJobById(Long jobId, String authenticatedEmail) {
-        // 1. Fetch Job and User
+        // 1. Fetch Job only (don't force user lookup if not logged in)
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException("Job not found"));
-        User currentUser = userRepository.findByEmail(authenticatedEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
 
         // 2. Map Base Details
         JobDetailDTO dto = new JobDetailDTO();
@@ -57,10 +55,10 @@ public class JobFetchService {
         dto.setAiGenSummary(job.getAiGenSummary());
 
         // Map Client details with Profile Picture
-        dto.setClientName(job.getClient().getUser().getFullName()); // Using your new getFullName() helper!
+        dto.setClientName(job.getClient().getUser().getFullName());
         dto.setClientProfilePicture(job.getClient().getUser().getPfpUrl());
 
-        // === NEW LOGIC: Map Client ID and Slug for Routing ===
+        // Map Client ID and Slug for Routing
         dto.setClientId(job.getClient().getId());
         dto.setClientSlug(job.getClient().getUser().getProfileSlug());
 
@@ -72,14 +70,17 @@ public class JobFetchService {
                     .collect(Collectors.toSet()));
         }
 
-        // 3. Determine Context Flags
-        boolean isOwner = job.getClient().getUser().getEmail().equals(authenticatedEmail);
+        // 3. Determine Context Flags (Safely handles null authenticatedEmail)
+        boolean isOwner = authenticatedEmail != null &&
+                job.getClient().getUser().getEmail().equals(authenticatedEmail);
         boolean hasApplied = false;
         Application userApplication = null;
 
-        if (!isOwner && job.getApplications() != null) {
+        if (!isOwner && authenticatedEmail != null && job.getApplications() != null) {
             for (Application app : job.getApplications()) {
-                if (app.getFreelancer().getUser().getEmail().equals(authenticatedEmail)) {
+                if (app.getFreelancer() != null &&
+                        app.getFreelancer().getUser() != null &&
+                        app.getFreelancer().getUser().getEmail().equals(authenticatedEmail)) {
                     hasApplied = true;
                     userApplication = app;
                     break;
@@ -93,7 +94,7 @@ public class JobFetchService {
         // --- SECURITY LOGIC FOR CONTACT NO ---
         if (isOwner) {
             dto.setContactNo(job.getContactNo());
-        } else if (hasApplied && userApplication != null && userApplication.getStatus().name().equals("ACCEPTED")) {
+        } else if (hasApplied && userApplication != null && userApplication.getStatus() != null && userApplication.getStatus().name().equals("ACCEPTED")) {
             dto.setContactNo(job.getContactNo());
         } else {
             dto.setContactNo(null);
@@ -232,5 +233,26 @@ public class JobFetchService {
         appDto.setFreelancerProfilePicture(app.getFreelancer().getUser().getPfpUrl());
 
         return appDto;
+    }
+
+    @Transactional(readOnly = true)
+    public List<JobSummaryDTO> getFeaturedJobs() {
+        // Fetches top 3 open jobs
+        List<Job> jobs = jobRepository.findTop3ByStatusOrderByCreatedAtDesc(JobStatus.OPEN);
+
+        return jobs.stream().map(job -> {
+            JobSummaryDTO dto = new JobSummaryDTO();
+            dto.setId(job.getId());
+            dto.setTitle(job.getTitle());
+            dto.setFixedBudget(job.getFixedBudget());
+            dto.setClientName(job.getClient().getDisplayName());
+            dto.setCreatedAt(job.getCreatedAt());
+            dto.setStatus(job.getStatus().name());
+
+            // If you have skill/tag associations on jobs, map them here:
+            // dto.setTags(job.getSkills().stream().map(SkillTag::getName).collect(Collectors.toList()));
+
+            return dto;
+        }).collect(Collectors.toList());
     }
 }

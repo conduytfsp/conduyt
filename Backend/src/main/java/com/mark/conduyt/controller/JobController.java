@@ -1,10 +1,6 @@
 package com.mark.conduyt.controller;
 
-import com.mark.conduyt.dto.JobCreateRequest;
-import com.mark.conduyt.dto.ApiResponse;
-import com.mark.conduyt.dto.ClientJobDTO;
-import com.mark.conduyt.dto.FreelancerJobDTO;
-import com.mark.conduyt.dto.JobDetailDTO;
+import com.mark.conduyt.dto.*;
 import com.mark.conduyt.entity.Job;
 import com.mark.conduyt.service.JobService;
 import com.mark.conduyt.service.JobFetchService;
@@ -66,7 +62,8 @@ public class JobController {
             @PathVariable Long jobId,
             Principal principal
     ) {
-        JobDetailDTO jobDetail = jobFetchService.getJobById(jobId, principal.getName());
+        String email = (principal != null) ? principal.getName() : null;
+        JobDetailDTO jobDetail = jobFetchService.getJobById(jobId, email);
         return ResponseEntity.ok(new ApiResponse<>(true, "Job details fetched successfully", jobDetail));
     }
 
@@ -109,5 +106,10 @@ public class JobController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new ApiResponse<>(true, "Job posted successfully", responseDto));
+    }
+
+    @GetMapping("/public/featured")
+    public ResponseEntity<List<JobSummaryDTO>> getFeaturedJobs() {
+        return ResponseEntity.ok(jobFetchService.getFeaturedJobs());
     }
 }

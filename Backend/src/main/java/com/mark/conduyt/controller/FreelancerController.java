@@ -9,6 +9,8 @@ import com.mark.conduyt.repository.UserRepository;
 import com.mark.conduyt.service.AnalyticsService;
 import com.mark.conduyt.service.FreelancerService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -34,6 +36,22 @@ public class FreelancerController {
         String email = authentication.getName();
         FreelancerProfileDTO profile = freelancerService.getProfile(email);
         return ResponseEntity.ok(profile);
+    }
+
+    // GET /api/freelancers/public/{slug}
+    @GetMapping("/public/{slug}")
+    public ResponseEntity<PublicFreelancerProfileDTO> getPublicProfile(@PathVariable String slug) {
+        PublicFreelancerProfileDTO profile = freelancerService.getPublicFreelancerProfile(slug);
+        return ResponseEntity.ok(profile);
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<FreelancerProfileDTO>> getAllFreelancers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size) {
+
+        Page<FreelancerProfileDTO> freelancers = freelancerService.getPaginatedFreelancers(PageRequest.of(page, size));
+        return ResponseEntity.ok(freelancers);
     }
 
     // PUT /api/freelancers/profile
@@ -122,6 +140,11 @@ public class FreelancerController {
         String email = authentication.getName();
         freelancerService.withdrawApplication(email, id);
         return ResponseEntity.ok(Map.of("message", "Application withdrawn successfully"));
+    }
+
+    @GetMapping("/public/featured")
+    public ResponseEntity<List<PublicFreelancerProfileDTO>> getFeaturedFreelancers() {
+        return ResponseEntity.ok(freelancerService.getFeaturedFreelancers());
     }
 
     @GetMapping("/analytics")

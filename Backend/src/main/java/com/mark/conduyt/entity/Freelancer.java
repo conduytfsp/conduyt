@@ -1,5 +1,6 @@
 package com.mark.conduyt.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.ArrayList;
@@ -50,6 +51,7 @@ public class Freelancer {
             joinColumns = @JoinColumn(name = "freelancer_id"),
             inverseJoinColumns = @JoinColumn(name = "skill_tag_id")
     )
+    @JsonIgnore
     private Set<SkillTag> skills = new HashSet<>();
 
     // Feature 2: Application history tracking for the freelancer

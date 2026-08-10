@@ -41,7 +41,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String jwt = null;
 
-        // 2. Cookie Extraction
+        // 1. Check Cookies first
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {
@@ -50,6 +50,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     break;
                 }
             }
+        }
+
+        // 2. Fallback: Check query string if cookie is missing (Fixes SSE EventSource)
+        if (jwt == null && request.getParameter("token") != null) {
+            jwt = request.getParameter("token");
+        }
+
+        // 3. If NO token found, DO NOT FAIL. Just continue.
+        if (jwt == null) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
         // 3. FIX: If NO token found, DO NOT FAIL. Just continue.

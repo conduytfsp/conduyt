@@ -23,6 +23,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class JobService {
 
     private final JobRepository jobRepository;

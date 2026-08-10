@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Book, CreditCard, Settings, UserCheck, ChevronDown } from 'lucide-react';
 import Navbar from "@/components/Navbar.jsx";
-import Footer from "@/components/layout/footer.jsx";
+import Footer from "@/components/Footer.jsx";
 
 const FAQS = [
   {

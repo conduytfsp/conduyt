@@ -4,6 +4,8 @@ package com.mark.conduyt.repository;
 import com.mark.conduyt.entity.Freelancer;
 import com.mark.conduyt.entity.SkillTag;
 import com.mark.conduyt.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,4 +27,8 @@ public interface FreelancerRepository extends JpaRepository<Freelancer, Long> {
     List<Freelancer> findFreelancersToNotifyForSkills(@Param("skills") Set<SkillTag> skills);
 
     List<Freelancer> findBySkillsIn(Set<SkillTag> attr0);
+
+    // Add this to your repository
+    @Query(value = "SELECT f FROM Freelancer f ORDER BY FUNCTION('RAND')")
+    Page<Freelancer> findRandomFeatured(Pageable pageable);
 }

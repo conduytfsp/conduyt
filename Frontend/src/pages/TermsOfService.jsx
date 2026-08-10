@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, ChevronRight } from 'lucide-react';
 import Navbar from "@/components/Navbar.jsx";
-import Footer from "@/components/layout/footer.jsx";
+import Footer from "@/components/Footer.jsx";
 
 export default function TermsOfService() {
     useEffect(() => {

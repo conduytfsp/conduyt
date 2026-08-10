@@ -26,7 +26,13 @@ public class NotificationController {
 
     // The endpoint React connects to using EventSource
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamNotifications(Authentication authentication) {
+    public Object streamNotifications(Authentication authentication) {
+
+        // Anti-crash safeguard
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body("Unauthorized: Missing or invalid token");
+        }
+
         String email = authentication.getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));

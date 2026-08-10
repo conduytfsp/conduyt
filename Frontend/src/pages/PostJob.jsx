@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useAxiosInstance } from "@/config/axiosConfig";
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/layout/footer";
+import Footer from "@/components/Footer.jsx";
 
 export default function PostJob() {
     const navigate = useNavigate();
