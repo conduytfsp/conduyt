@@ -22,10 +22,10 @@ FROM eclipse-temurin:21-jdk-alpine
 WORKDIR /app
 
 # Copy the JAR from the build stage
-COPY --from=build /app/target/Curevo-0.0.1-SNAPSHOT.jar .
+COPY --from=build /app/target/conduyt-0.0.1-SNAPSHOT.jar .
 
 # Expose default port
 EXPOSE 8080
 
 # Run the app using shell form to ensure Render's dynamic PORT environment variable is picked up
-ENTRYPOINT ["sh", "-c", "java -jar -Dserver.port=${PORT:-8080} Curevo-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["sh", "-c", "java -jar -Dserver.port=${PORT:-8080} conduyt-0.0.1-SNAPSHOT.jar"]

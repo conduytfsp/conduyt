@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       // Only include proxy setup if in development mode
       proxy: isDev ? {
         '/backend_url': {
-          target: 'http://localhost:8080', // Your local Backend port
+          target: 'https://conduyt.onrender.com', // Your local Backend port
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/backend_url/, '')
