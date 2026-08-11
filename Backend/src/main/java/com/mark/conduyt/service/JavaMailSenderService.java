@@ -1,48 +1,63 @@
 package com.mark.conduyt.service;
 
-import jakarta.mail.internet.MimeMessage;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class JavaMailSenderService {
 
-    // Must be final so @RequiredArgsConstructor injects it automatically
-    private final JavaMailSender mailSender;
+    private final ObjectMapper objectMapper;
 
-    // Temporarily commented out @Async so email failures run on the main thread,
-    // trigger a transaction rollback, and log the exact SMTP error to Render!
+    // Reads GOOGLE_SCRIPT_URL from environment variable via application.yml
+    @Value("${app.google.script-url}")
+    private String googleScriptUrl;
+
     // @Async
     public void sendEmail(String fromEmail, String fromName, String toEmail, String toName, String subject, String textContent, String htmlContent) {
         try {
-            log.info(">>> [SMTP] Attempting connection and dispatching email to: {}", toEmail);
+            log.info(">>> [HTTP EMAIL] Dispatching email to {} via Google Webhook", toEmail);
 
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            Map<String, String> payload = new HashMap<>();
+            payload.put("to", toEmail);
+            payload.put("subject", subject);
+            payload.put("htmlBody", htmlContent);
 
-            // Format: "Conduyt <conduytfsp@gmail.com>"
-            helper.setFrom(fromEmail, fromName);
+            String jsonPayload = objectMapper.writeValueAsString(payload);
 
-            // Format: "UserName <user@example.com>"
-            if (toName != null && !toName.isBlank()) {
-                helper.setTo(toName + " <" + toEmail + ">");
+            HttpClient client = HttpClient.newBuilder()
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .build();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(googleScriptUrl))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                log.info(">>> [HTTP SUCCESS] Email delivered to: {}", toEmail);
             } else {
-                helper.setTo(toEmail);
+                log.error(">>> [HTTP ERROR] Failed with status {}: {}", response.statusCode(), response.body());
+                throw new RuntimeException("Google Apps Script returned status: " + response.statusCode());
             }
 
-            helper.setSubject(subject);
-            helper.setText(htmlContent, true); // true = render as HTML
-
-            mailSender.send(message);
-            log.info(">>> [SMTP SUCCESS] Email delivered to: {}", toEmail);
         } catch (Exception e) {
-            log.error(">>> [CRITICAL SMTP ERROR] Failed sending to {}. Cause: {}", toEmail, e.getMessage(), e);
-            throw new RuntimeException("Failed to send email via Gmail SMTP: " + e.getMessage(), e);
+            log.error(">>> [CRITICAL HTTP EMAIL ERROR] Failed sending to {}. Cause: {}", toEmail, e.getMessage(), e);
+            throw new RuntimeException("Failed to send email via HTTP: " + e.getMessage(), e);
         }
     }
 }

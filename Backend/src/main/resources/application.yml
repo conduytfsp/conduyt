@@ -25,20 +25,7 @@ spring:
       name: ${SECURITY_USERNAME}
       password: ${SECURITY_PASSWORD}
 
-  mail:
-    host: smtp.gmail.com
-    port: 465
-    username: conduytfsp@gmail.com
-    password: ${GMAIL_APP_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          ssl:
-            enable: true
-          connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
+  # NOTE: spring.mail section is completely removed!
 
   servlet:
     multipart:
@@ -50,6 +37,8 @@ spring:
 app:
   frontend:
     url: ${FRONTEND_URL:http://localhost:3000}
+  google:
+    script-url: ${GOOGLE_SCRIPT_URL}
 
 gemini:
   api:
