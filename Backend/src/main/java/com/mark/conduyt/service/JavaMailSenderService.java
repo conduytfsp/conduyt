@@ -3,6 +3,7 @@ package com.mark.conduyt.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
@@ -24,7 +25,7 @@ public class JavaMailSenderService {
     @Value("${app.google.script-url}")
     private String googleScriptUrl;
 
-    // @Async
+    @Async
     public void sendEmail(String fromEmail, String fromName, String toEmail, String toName, String subject, String textContent, String htmlContent) {
         try {
             log.info(">>> [HTTP EMAIL] Dispatching email to {} via Google Webhook", toEmail);
