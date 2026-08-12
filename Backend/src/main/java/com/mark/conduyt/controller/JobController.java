@@ -25,10 +25,41 @@ public class JobController {
     private final JobService jobService;
     private final JobFetchService jobFetchService;
 
+    // ==========================================
+    // 1. POST A NEW JOB
+    // ==========================================
+    @PostMapping
+    public ResponseEntity<ApiResponse<ClientJobDTO>> postJob(
+            @Valid @RequestBody JobCreateRequest request,
+            Principal principal) {
+        Job createdJob = jobService.createJob(request, principal.getName());
 
+        ClientJobDTO responseDto = new ClientJobDTO();
+        responseDto.setId(createdJob.getId());
+        responseDto.setTitle(createdJob.getTitle());
+        responseDto.setFixedBudget(createdJob.getFixedBudget());
+        responseDto.setStatus(createdJob.getStatus());
+        responseDto.setCreatedAt(createdJob.getCreatedAt());
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiResponse<>(true, "Job posted successfully", responseDto));
+    }
 
     // ==========================================
-    // 2. GET CLIENT'S POSTED JOBS (Dashboard)
+    // 2. UPDATE AN EXISTING JOB (With Ownership Check)
+    // ==========================================
+    @PutMapping("/{jobId}")
+    public ResponseEntity<ApiResponse<ClientJobDTO>> updateJob(
+            @PathVariable Long jobId,
+            @Valid @RequestBody JobCreateRequest request,
+            Principal principal) {
+
+        ClientJobDTO updatedJob = jobService.updateJob(jobId, request, principal.getName());
+        return ResponseEntity.ok(new ApiResponse<>(true, "Job updated successfully", updatedJob));
+    }
+
+    // ==========================================
+    // 3. GET CLIENT'S POSTED JOBS (Dashboard)
     // ==========================================
     @GetMapping("/client")
     public ResponseEntity<ApiResponse<Page<ClientJobDTO>>> getClientJobs(
@@ -40,7 +71,7 @@ public class JobController {
     }
 
     // ==========================================
-    // 3. GET GENERAL JOB FEED (Search & Filter)
+    // 4. GET GENERAL JOB FEED (Search & Filter)
     // ==========================================
     @GetMapping("/feed")
     public ResponseEntity<ApiResponse<Page<FreelancerJobDTO>>> getJobFeed(
@@ -55,7 +86,7 @@ public class JobController {
     }
 
     // ==========================================
-    // 4. GET SINGLE JOB DETAILS (Smart View)
+    // 5. GET SINGLE JOB DETAILS (Smart View)
     // ==========================================
     @GetMapping("/{jobId}")
     public ResponseEntity<ApiResponse<JobDetailDTO>> getSingleJob(
@@ -68,7 +99,7 @@ public class JobController {
     }
 
     // ==========================================
-    // 5. GET FREELANCER'S APPLIED JOBS (Dashboard)
+    // 6. GET FREELANCER'S APPLIED JOBS (Dashboard)
     // ==========================================
     @GetMapping("/freelancer/applied")
     public ResponseEntity<ApiResponse<Page<FreelancerJobDTO>>> getFreelancerAppliedJobs(
@@ -79,10 +110,13 @@ public class JobController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Applied jobs fetched successfully", jobs));
     }
 
+    // ==========================================
+    // 7. PATCH JOB STATUS
+    // ==========================================
     @PatchMapping("/{jobId}/status")
     public ResponseEntity<ApiResponse<Void>> updateJobStatus(
             @PathVariable Long jobId,
-            @RequestBody Map<String, String> statusMap, // Expecting {"status": "CANCELLED"}
+            @RequestBody Map<String, String> statusMap,
             Principal principal
     ) {
         String status = statusMap.get("status");
@@ -90,24 +124,9 @@ public class JobController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Status updated", null));
     }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<ClientJobDTO>> postJob(
-            @Valid @RequestBody JobCreateRequest request,
-            Principal principal) {
-        Job createdJob = jobService.createJob(request, principal.getName());
-
-        // Map to DTO to prevent Jackson circular reference / stack overflow errors
-        ClientJobDTO responseDto = new ClientJobDTO();
-        responseDto.setId(createdJob.getId());
-        responseDto.setTitle(createdJob.getTitle());
-        responseDto.setFixedBudget(createdJob.getFixedBudget());
-        responseDto.setStatus(createdJob.getStatus());
-        responseDto.setCreatedAt(createdJob.getCreatedAt());
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ApiResponse<>(true, "Job posted successfully", responseDto));
-    }
-
+    // ==========================================
+    // 8. PUBLIC FEATURED JOBS
+    // ==========================================
     @GetMapping("/public/featured")
     public ResponseEntity<List<JobSummaryDTO>> getFeaturedJobs() {
         return ResponseEntity.ok(jobFetchService.getFeaturedJobs());

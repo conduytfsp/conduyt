@@ -6,8 +6,9 @@ import com.mark.conduyt.entity.User;
 import com.mark.conduyt.enums.AccountStatus;
 import com.mark.conduyt.exception.UserNotFoundException;
 import com.mark.conduyt.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -173,41 +174,14 @@ public class UserService implements UserDetailsService {
         return userRepository.getUserByEmail(email);
     }
 
-    // NOTE: You would need a utility similar to this for production code:
-//    static class RandomPasswordGenerator {
-//        // A simple placeholder; use a robust implementation in your actual project.
-//        private static final String CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-//        private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
-//
-//        public static String generate(int length) {
-//            StringBuilder sb = new StringBuilder(length);
-//            for (int i = 0; i < length; i++) {
-//                sb.append(CHARS.charAt(RANDOM.nextInt(CHARS.length())));
-//            }
-//            return sb.toString();
-//        }
-//    }
+    @Scheduled(cron = "0 0 16 * * ?")
+    @Transactional(rollbackFor = Exception.class)
+    public void cleanupPendingAccounts() {
+        List<User> pendingUsers = userRepository.findByAccountStatus(AccountStatus.PENDING);
 
-//    @Transactional
-//    public User createAdminUser(AdminUserCreationDTO dto) {
-//
-//        // 1. Validation Checks (Optional, but good practice if not using DTO validation)
-//        if (userRepository.existsByEmail(dto.getEmail())) {
-//            throw new IllegalArgumentException("User with this email already exists.");
-//        }
-//        if (userRepository.existsByPhoneNo(dto.getPhoneNo())) {
-//            throw new IllegalArgumentException("User with this phone number already exists.");
-//        }
-//
-//        // 2. Build the User Entity
-//        User adminUser = User.builder()
-//                .email(dto.getEmail())
-//                .phoneNo(dto.getPhoneNo())
-//                .userRole(UserRole.ADMIN) // CRITICAL: Set the role to ADMIN
-//                .password(passwordEncoder.encode(dto.getPassword())) // Ensure password is encrypted
-//                .build();
-//
-//        // 3. Save and Return
-//        return userRepository.save(adminUser);
-//    }
+        if (!pendingUsers.isEmpty()) {
+            userRepository.deleteAll(pendingUsers);
+            System.out.println("Cleaned up " + pendingUsers.size() + " unverified/pending accounts.");
+        }
+    }
 }

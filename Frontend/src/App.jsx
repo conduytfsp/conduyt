@@ -41,6 +41,8 @@ function App() {
 
                 <Route path="/post-job" element={<PostJob />} />
 
+                <Route path="/jobs/:jobId/edit" element={<PostJob />} />
+
                 <Route path="/client-dashboard" element={<ClientDashboard />}/>
 
                 <Route path="/freelancerdashboard/*" element={<FreelancerDashboard />} />

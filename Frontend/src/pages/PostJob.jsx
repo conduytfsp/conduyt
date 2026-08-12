@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Briefcase,
@@ -10,17 +10,26 @@ import {
     Tags,
     X,
     Building2,
-    Sparkles
+    Sparkles,
+    RefreshCcw,
+    Save
 } from "lucide-react";
 import { useAxiosInstance } from "@/config/axiosConfig";
+import { useAppStore } from "@/store/useAppStore";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer.jsx";
+import toast from "react-hot-toast";
 
 export default function PostJob() {
     const navigate = useNavigate();
+    const { jobId } = useParams(); // If present, we are in EDIT mode
+    const isEditMode = Boolean(jobId);
+
     const axios = useAxiosInstance();
+    const { mode, toggleMode } = useAppStore(); // Access global mode
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoadingJob, setIsLoadingJob] = useState(isEditMode);
 
     // ================= FORM DATA =================
     const [formData, setFormData] = useState({
@@ -36,27 +45,55 @@ export default function PostJob() {
     const [selectedSkills, setSelectedSkills] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
 
-    // Scroll to top & fetch skills on mount
+    // ================= INITIAL LOAD =================
     useEffect(() => {
         window.scrollTo(0, 0);
 
+        // 1. Fetch available skills for the dropdown
         const fetchSkills = async () => {
             try {
                 const response = await axios.get("/api/skills");
-                const fetchedData = response.data.data || response.data.payload || response.data;
+                const fetchedData = response.data?.data || response.data?.payload || response.data;
                 if (Array.isArray(fetchedData)) {
-                    const normalizedSkills = fetchedData.map(s => ({
-                        id: s.id,
-                        name: s.name || s.label
-                    }));
-                    setAvailableSkills(normalizedSkills);
+                    setAvailableSkills(fetchedData.map(s => ({ id: s.id, name: s.name || s.label })));
                 }
             } catch (error) {
                 console.error("Failed to fetch skills.", error);
             }
         };
+
+        // 2. If Edit mode, fetch the existing job details
+        const fetchJobForEdit = async () => {
+            try {
+                const res = await axios.get(`/api/jobs/${jobId}`);
+                const job = res.data?.data || res.data;
+
+                setFormData({
+                    title: job.title || "",
+                    description: job.description || "",
+                    fixedBudget: job.fixedBudget || "",
+                    contactNo: job.contactNo || "",
+                });
+
+                // Assuming backend returns an array of skill objects. Adjust if it only returns strings.
+                if (job.skills || job.requiredSkills) {
+                    const jobSkills = job.skills || job.requiredSkills;
+                    // Format to match our {id, name} structure
+                    setSelectedSkills(jobSkills.map(s => typeof s === 'string' ? { id: s, name: s } : { id: s.id, name: s.name }));
+                }
+            } catch (err) {
+                toast.error("Failed to load job details.");
+                navigate('/dashboard'); // Kick them back if job not found
+            } finally {
+                setIsLoadingJob(false);
+            }
+        };
+
         fetchSkills();
-    }, [axios]);
+        if (isEditMode) {
+            fetchJobForEdit();
+        }
+    }, [axios, jobId, isEditMode, navigate]);
 
     // ================= HANDLERS =================
     const handleChange = (e) => {
@@ -85,26 +122,63 @@ export default function PostJob() {
                 title: formData.title,
                 description: formData.description,
                 fixedBudget: parseFloat(formData.fixedBudget),
-                contactNo: formData.contactNo || null, // Optional
-                skillIds: selectedSkills.map(s => s.id), // Exact requirement for DTO
+                contactNo: formData.contactNo || null,
+                skillIds: selectedSkills.map(s => s.id),
             };
 
-            const res = await axios.post("/api/jobs", payload);
-
-            // Navigate to the newly created job page
-            const newJobId = res.data?.data?.id;
-            if (newJobId) {
-                navigate(`/jobs/${newJobId}`);
+            let res;
+            if (isEditMode) {
+                res = await axios.put(`/api/jobs/${jobId}`, payload);
+                toast.success("Job updated successfully!");
             } else {
-                navigate("/dashboard"); // Fallback
+                res = await axios.post("/api/jobs", payload);
+                toast.success("Job posted successfully!");
             }
 
+            // Navigate to the newly created/updated job page
+            const updatedJobId = res.data?.data?.id || jobId;
+            if (updatedJobId) {
+                navigate(`/jobs/${updatedJobId}`);
+            } else {
+                navigate("/dashboard");
+            }
         } catch (error) {
-            console.error("Failed to post job:", error);
-            alert(error.response?.data?.message || "Something went wrong while posting the job.");
+            console.error("Failed to save job:", error);
+            toast.error(error.response?.data?.message || "Something went wrong while saving the job.");
             setIsSubmitting(false);
         }
     };
+
+    // ================= GUARD: MUST BE IN CLIENT MODE =================
+    if (mode !== 'client') {
+        return (
+            <div className="min-h-screen bg-[#F8FAFC] font-sans antialiased flex flex-col">
+                <Navbar />
+                <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white p-8 md:p-10 rounded-3xl border border-slate-200 shadow-sm max-w-md w-full"
+                    >
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-[#09D66D] mb-5 shadow-sm">
+                            <RefreshCcw size={32} />
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Switch to Client Mode</h2>
+                        <p className="text-slate-500 font-medium mb-8 leading-relaxed">
+                            You are currently viewing Conduyt as a freelancer. To {isEditMode ? "edit this job" : "post a new job"}, you need to switch to your Client profile.
+                        </p>
+                        <button
+                            onClick={toggleMode}
+                            className="flex w-full items-center justify-center gap-2 bg-[#09D66D] text-white py-3.5 rounded-xl font-bold hover:bg-[#07B85D] transition-colors active:scale-95 shadow-sm"
+                        >
+                            Switch to Client Mode
+                        </button>
+                    </motion.div>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
 
     // ================= STYLES =================
     const inputStyles = "w-full rounded-xl border border-slate-200 bg-slate-50 px-11 py-3.5 text-sm text-slate-900 focus:border-[#09D66D] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#09D66D]/10 transition-all placeholder:text-slate-400";
@@ -123,10 +197,10 @@ export default function PostJob() {
                     </div>
                     <div className="text-center md:text-left">
                         <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
-                            Post a New Job
+                            {isEditMode ? "Edit Job Post" : "Post a New Job"}
                         </h1>
                         <p className="text-slate-500 font-medium">
-                            Find the perfect freelancer for your next project.
+                            {isEditMode ? "Update your requirements to attract the perfect freelancer." : "Find the perfect freelancer for your next project."}
                         </p>
                     </div>
                 </div>
@@ -135,18 +209,26 @@ export default function PostJob() {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white border border-slate-200 rounded-3xl p-6 md:p-10 shadow-sm"
+                    className="bg-white border border-slate-200 rounded-3xl p-6 md:p-10 shadow-sm relative"
                 >
-                    {/* AI Banner */}
-                    <div className="mb-8 flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
-                        <Sparkles className="mt-0.5 text-[#09D66D]" size={20} shrink-0 />
-                        <div>
-                            <h4 className="text-sm font-bold text-emerald-900">AI Summary Automation</h4>
-                            <p className="text-xs font-medium text-emerald-700/80 leading-relaxed mt-1">
-                                Just write your full description below. Our AI matching engine will automatically generate a crisp, 2-sentence summary for the job feed to attract the best talent.
-                            </p>
+                    {isLoadingJob && (
+                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 rounded-3xl backdrop-blur-sm">
+                            <RefreshCcw className="animate-spin text-[#09D66D]" size={32} />
                         </div>
-                    </div>
+                    )}
+
+                    {/* AI Banner (Only show on new posts since edits might not re-trigger AI) */}
+                    {!isEditMode && (
+                        <div className="mb-8 flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
+                            <Sparkles className="mt-0.5 text-[#09D66D]" size={20} shrink-0 />
+                            <div>
+                                <h4 className="text-sm font-bold text-emerald-900">AI Summary Automation</h4>
+                                <p className="text-xs font-medium text-emerald-700/80 leading-relaxed mt-1">
+                                    Just write your full description below. Our AI matching engine will automatically generate a crisp, 2-sentence summary for the job feed to attract the best talent.
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit} className="space-y-8">
 
@@ -258,11 +340,11 @@ export default function PostJob() {
                                     ) : (
                                         selectedSkills.map((skill) => (
                                             <span key={skill.id} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 border border-emerald-200/60">
-                        {skill.name}
+                                                {skill.name}
                                                 <button type="button" onClick={() => handleRemoveSkill(skill)} className="text-emerald-400 hover:text-emerald-700 transition-colors">
-                          <X size={14} />
-                        </button>
-                      </span>
+                                                  <X size={14} />
+                                                </button>
+                                              </span>
                                         ))
                                     )}
                                 </div>
@@ -294,17 +376,19 @@ export default function PostJob() {
                             <button
                                 type="submit"
                                 disabled={isSubmitting || selectedSkills.length === 0}
-                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#09D66D] py-4 text-base font-bold text-white shadow-sm transition-all hover:bg-[#07B85D] disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#09D66D] py-4 text-base font-bold text-white shadow-sm transition-all hover:bg-[#07B85D] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isSubmitting ? (
-                                    "Generating AI Summary & Posting..."
+                                    "Processing..."
+                                ) : isEditMode ? (
+                                    <>Save Changes <Save size={18} /></>
                                 ) : (
                                     <>Publish Job Post <Send size={18} /></>
                                 )}
                             </button>
                             {selectedSkills.length === 0 && (
                                 <p className="text-center text-xs text-rose-500 font-medium mt-3">
-                                    * You must select at least one skill to post this job.
+                                    * You must select at least one skill to {isEditMode ? "update" : "post"} this job.
                                 </p>
                             )}
                         </div>
