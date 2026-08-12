@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Upload, Lock, User, Building2, X, Save, Loader2 } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
-import toast, { Toaster } from "react-hot-toast"; // <-- Added Toast
+import toast, { Toaster } from "react-hot-toast";
 import { useAxiosInstance } from "@/config/axiosConfig";
 
 export default function PersonalDetailsView() {
@@ -10,26 +10,32 @@ export default function PersonalDetailsView() {
   // Grab shared state directly from layout context
   const { clientType, setClientType, profileData, setProfileData } = useOutletContext();
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 1. Form Data for Text Fields
   const [formData, setFormData] = useState({
     firstName: profileData?.firstName || "",
     middleName: profileData?.middleName || "",
     lastName: profileData?.lastName || "",
-    profilePic: profileData?.profilePic || null,
   });
 
-  // Sync form data if profileData loads after the component mounts
+  // 2. Separate State for the Image
+  const [selectedFile, setSelectedFile] = useState(null); // The actual file to send to backend
+  const [imagePreview, setImagePreview] = useState(profileData?.profilePic || null); // URL for UI preview
+
+  // Sync state if profileData loads after the component mounts
   useEffect(() => {
     if (profileData) {
       setFormData({
         firstName: profileData.firstName || "",
         middleName: profileData.middleName || "",
         lastName: profileData.lastName || "",
-        profilePic: profileData.profilePic || null,
       });
+      if (!selectedFile) {
+        setImagePreview(profileData.profilePic || null);
+      }
     }
-  }, [profileData]);
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  }, [profileData, selectedFile]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -40,48 +46,66 @@ export default function PersonalDetailsView() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        toast.error("File size exceeds 2MB."); // <-- Standardized error handling
+        toast.error("File size exceeds 2MB.");
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => setFormData((prev) => ({ ...prev, profilePic: reader.result }));
-      reader.readAsDataURL(file);
+      setSelectedFile(file); // Store the actual file
+      setImagePreview(URL.createObjectURL(file)); // Generate local preview URL
     }
   };
 
   const handleRemoveImage = () => {
-    setFormData((prev) => ({ ...prev, profilePic: null }));
+    setSelectedFile(null);
+    setImagePreview(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // ================= MULTIPART FORM DATA =================
+    const payload = new FormData();
+
+    // A. Attach the DTO as a JSON Blob (Separate Entity)
+    const dtoData = {
+      clientType,
+      firstName: formData.firstName,
+      middleName: formData.middleName,
+      lastName: formData.lastName,
+    };
+    payload.append("dto", new Blob([JSON.stringify(dtoData)], { type: "application/json" }));
+
+    // B. Attach the Image File (Separate Entity)
+    if (selectedFile) {
+      payload.append("file", selectedFile);
+    }
+
     try {
-      await axiosInstance.put("/api/clients/profile", {
-        clientType,
-        ...formData
+      // Note: We use put/post with multipart/form-data header
+      const res = await axiosInstance.put("/api/clients/profile", payload, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
 
+      // Assuming backend returns the updated profile URL in res.data.profilePic
+      const updatedProfilePic = res.data?.data?.profilePic || imagePreview;
+
       if (typeof setProfileData === "function") {
-        setProfileData((prev) => ({ ...prev, ...formData }));
+        setProfileData((prev) => ({
+          ...prev,
+          ...formData,
+          profilePic: updatedProfilePic
+        }));
       }
 
-      toast.success("Personal details updated successfully!"); // <-- Standardized success handling
+      toast.success("Personal details updated successfully!");
     } catch (error) {
-      console.warn("Backend /api/clients/profile not implemented yet. Simulating success.");
-
-      // Developer Fallback
-      setTimeout(() => {
-        if (typeof setProfileData === "function") {
-          setProfileData((prev) => ({ ...prev, ...formData }));
-        }
-        toast.success("Profile updated! (Offline Mode)");
-        setIsSubmitting(false);
-      }, 600);
-      return;
+      console.warn("Backend /api/clients/profile failed or not updated yet.");
+      toast.error(error.response?.data?.message || "Failed to update profile.");
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   return (
@@ -154,9 +178,9 @@ export default function PersonalDetailsView() {
             </label>
             <div className="flex items-center gap-6">
               <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-50">
-                {formData.profilePic ? (
+                {imagePreview ? (
                     <>
-                      <img src={formData.profilePic} alt="Profile" className="h-full w-full object-cover" />
+                      <img src={imagePreview} alt="Profile Preview" className="h-full w-full object-cover" />
                       <button
                           type="button"
                           onClick={handleRemoveImage}

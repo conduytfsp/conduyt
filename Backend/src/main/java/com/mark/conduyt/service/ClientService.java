@@ -109,7 +109,7 @@ public class ClientService {
     }
 
     @Transactional
-    public void updatePersonalProfile(String email, ClientProfileUpdateDTO dto) {
+    public void updatePersonalProfile(String email, ClientProfileUpdateDTO dto, MultipartFile file) {
         // 1. Update User Entity
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
@@ -117,12 +117,21 @@ public class ClientService {
         user.setFirstName(dto.getFirstName());
         user.setMiddleName(dto.getMiddleName());
         user.setLastName(dto.getLastName());
-        if (dto.getProfilePic() != null) {
-            user.setPfpUrl(dto.getProfilePic());
+
+        // 2. Upload Profile Picture via ImageHostingService if a new file is provided
+        if (file != null && !file.isEmpty()) {
+            try {
+                // Assuming your uploadImage method accepts a MultipartFile
+                String hostedUrl = imageHostingService.uploadImage(file, "Profile Image");
+                user.setPfpUrl(hostedUrl);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to upload profile picture", e);
+            }
         }
+
         userRepository.save(user);
 
-        // 2. Update Client Entity Type
+        // 3. Update Client Entity Type
         Client client = clientRepository.findByUser(user).orElseGet(() -> {
             Client newClient = new Client();
             newClient.setUser(user);

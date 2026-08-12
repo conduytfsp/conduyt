@@ -6,11 +6,13 @@ import com.mark.conduyt.enums.ApplicationStatus;
 import com.mark.conduyt.service.AnalyticsService;
 import com.mark.conduyt.service.ClientService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.List;
@@ -37,13 +39,14 @@ public class ClientController {
 
     // ================= 2. UPDATE PERSONAL PROFILE =================
     // Called by PersonalDetailsView.jsx (/api/clients/profile)
-    @PutMapping("/profile")
+    @PutMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Void>> updateProfile(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody ClientProfileUpdateDTO updateDto) {
+            @RequestPart("dto") ClientProfileUpdateDTO updateDto,
+            @RequestPart(value = "file", required = false) MultipartFile file) {
 
         String email = userDetails.getUsername();
-        clientService.updatePersonalProfile(email, updateDto);
+        clientService.updatePersonalProfile(email, updateDto, file);
 
         return ResponseEntity.ok(new ApiResponse<>(
                 true,
