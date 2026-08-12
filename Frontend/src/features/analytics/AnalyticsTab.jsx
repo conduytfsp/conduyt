@@ -2,12 +2,29 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Ban, Briefcase, CheckCircle2, ClipboardList, TrendingUp, Wallet, Sparkles } from 'lucide-react';
 import { useAxiosInstance } from '@/config/axiosConfig';
-import { seedAnalytics } from '@/lib/mockData';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, cn } from '@/lib/utils';
+
+// Fallback for new users or if the endpoint fails
+const ZERO_STATE_ANALYTICS = {
+  totalApplications: 0,
+  activeContracts: 0,
+  completedJobs: 0,
+  totalEarned: 0,
+  winRate: 0,
+  rejectedOrGhosted: 0,
+  monthlyApplications: [
+    { month: 'Jan', applications: 0, hires: 0 },
+    { month: 'Feb', applications: 0, hires: 0 },
+    { month: 'Mar', applications: 0, hires: 0 },
+    { month: 'Apr', applications: 0, hires: 0 },
+    { month: 'May', applications: 0, hires: 0 },
+    { month: 'Jun', applications: 0, hires: 0 },
+  ],
+};
 
 export default function AnalyticsTab() {
   const axios = useAxiosInstance();
@@ -18,20 +35,19 @@ export default function AnalyticsTab() {
     queryFn: async () => {
       try {
         const res = await axios.get('/api/freelancers/analytics');
-        return res.data?.data || res.data;
+        return res.data?.data || res.data || ZERO_STATE_ANALYTICS;
       } catch (err) {
-        console.warn("Backend analytics endpoint offline. Using fallback mock data.");
-        return seedAnalytics;
+        // Return zeros if missing profile or network error
+        return ZERO_STATE_ANALYTICS;
       }
     },
-    placeholderData: seedAnalytics,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 
-  const a = data ?? seedAnalytics;
+  const a = data || ZERO_STATE_ANALYTICS;
   const maxApplications = Math.max(...(a.monthlyApplications?.map((m) => m.applications) || [1]), 1);
 
-  if (isLoading && !data) {
+  if (isLoading) {
     return (
         <div className="mx-auto max-w-6xl w-full space-y-8">
           <Skeleton className="h-20 w-full" />
@@ -44,7 +60,6 @@ export default function AnalyticsTab() {
   }
 
   return (
-      // Widened from max-w-5xl to max-w-6xl for a more expansive dashboard feel
       <div className="mx-auto max-w-6xl w-full">
         <PageHeader
             title="Analytics"
@@ -53,9 +68,9 @@ export default function AnalyticsTab() {
 
         {/* Top Stat Cards */}
         <div className="mb-8 grid grid-cols-2 gap-5 lg:grid-cols-4">
-          <StatCard icon={ClipboardList} label="Total Applications" value={a.totalApplications} delay={0} />
-          <StatCard icon={Briefcase} label="Active Contracts" value={a.activeContracts} delay={0.05} accent />
-          <StatCard icon={CheckCircle2} label="Completed Jobs" value={a.completedJobs} delay={0.1} />
+          <StatCard icon={ClipboardList} label="Total Applications" value={a.totalApplications || 0} delay={0} />
+          <StatCard icon={Briefcase} label="Active Contracts" value={a.activeContracts || 0} delay={0.05} accent />
+          <StatCard icon={CheckCircle2} label="Completed Jobs" value={a.completedJobs || 0} delay={0.1} />
           <StatCard icon={Wallet} label="Total Earned" value={formatCurrency(a.totalEarned || 0)} delay={0.15} accent />
         </div>
 
@@ -73,11 +88,11 @@ export default function AnalyticsTab() {
                 <span className="flex items-center gap-2 text-sm font-bold text-foreground">
                   <TrendingUp className="h-4 w-4 text-[#09D66D]" /> Win rate
                 </span>
-                  <span className="font-display text-lg font-extrabold text-[#09D66D]">{a.winRate}%</span>
+                  <span className="font-display text-lg font-extrabold text-[#09D66D]">{a.winRate || 0}%</span>
                 </div>
-                <Progress value={a.winRate} className="h-2.5 bg-emerald-100 [&>div]:bg-[#09D66D]" />
+                <Progress value={a.winRate || 0} className="h-2.5 bg-emerald-100 [&>div]:bg-[#09D66D]" />
                 <p className="mt-2.5 text-xs font-medium text-muted-foreground leading-relaxed">
-                  <strong className="text-foreground">{a.winRate}%</strong> of your applications resulted in a hire.
+                  <strong className="text-foreground">{a.winRate || 0}%</strong> of your applications resulted in a hire.
                 </p>
               </div>
 
@@ -91,7 +106,7 @@ export default function AnalyticsTab() {
                     <p className="text-xs font-medium text-rose-600/70">Closed without a hire</p>
                   </div>
                 </div>
-                <span className="font-display text-xl font-extrabold text-rose-700">{a.rejectedOrGhosted}</span>
+                <span className="font-display text-xl font-extrabold text-rose-700">{a.rejectedOrGhosted || 0}</span>
               </div>
             </CardContent>
           </Card>
@@ -112,24 +127,24 @@ export default function AnalyticsTab() {
             <CardContent>
               <div className="flex h-[240px] items-end justify-between gap-2 sm:gap-4 pt-6">
                 {a.monthlyApplications?.map((m, i) => (
-                    <div key={m.month} className="flex flex-1 flex-col items-center gap-3">
+                    <div key={m.month || i} className="flex flex-1 flex-col items-center gap-3">
                       <div className="relative flex h-full w-full max-w-[48px] items-end justify-center group">
                         {/* Background Bar (Total Applications) */}
                         <motion.div
                             initial={{ height: 0 }}
-                            animate={{ height: `${(m.applications / maxApplications) * 100}%` }}
+                            animate={{ height: `${((m.applications || 0) / maxApplications) * 100}%` }}
                             transition={{ delay: i * 0.06, duration: 0.5, ease: 'easeOut' }}
                             className="w-full rounded-t-lg bg-muted/60 group-hover:bg-muted transition-colors relative"
                         >
                       <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                        {m.applications}
+                        {m.applications || 0}
                       </span>
                         </motion.div>
 
                         {/* Foreground Bar (Hires) */}
                         <motion.div
                             initial={{ height: 0 }}
-                            animate={{ height: `${(m.hires / maxApplications) * 100}%` }}
+                            animate={{ height: `${((m.hires || 0) / maxApplications) * 100}%` }}
                             transition={{ delay: i * 0.06 + 0.1, duration: 0.5, ease: 'easeOut' }}
                             className="absolute bottom-0 w-full rounded-t-lg bg-primary shadow-sm"
                         />

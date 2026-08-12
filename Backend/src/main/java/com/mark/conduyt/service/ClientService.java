@@ -192,28 +192,42 @@ public class ClientService {
         return dto;
     }
 
-    @Transactional
-    public void updateCompanyProfile(String email, CompanyDetailsUpdateDTO dto) {
+    @Transactional(rollbackFor = Exception.class)
+    public CompanyDetailsUpdateDTO updateCompanyProfile(String email, CompanyDetailsUpdateDTO dto) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
+        // 1. UPSERT CLIENT: If they don't have a Client profile yet (e.g., dual-role crossover), create it.
         Client client = clientRepository.findByUser(user)
-                .orElseThrow(() -> new RuntimeException("Client profile not found for user"));
+                .orElseGet(() -> {
+                    Client newClient = new Client();
+                    newClient.setUser(user);
+                    // Set any default Client enums/fields here if needed, e.g.:
+                    // newClient.setClientType(ClientType.COMPANY);
+                    return clientRepository.save(newClient);
+                });
 
+        // 2. UPSERT COMPANY: If they don't have a company yet, create it.
         Company company = client.getCompany();
         if (company == null) {
             company = new Company();
-            client.setCompany(company);
         }
 
+        // 3. Map DTO data to entity
         company.setName(dto.getCompanyName());
         company.setWebsiteUrl(dto.getCompanyWebsite());
         company.setContactNumber(dto.getContactNumber());
         company.setGstin(dto.getGstin());
         company.setAddress(dto.getCompanyAddress());
 
-        companyRepository.save(company);
+        // 4. Save Company first, then link to Client and save Client
+        company = companyRepository.save(company);
+
+        client.setCompany(company);
         clientRepository.save(client);
+
+        // 5. Return the saved data so the Controller can send it back to React
+        return dto;
     }
 
     // Add these to ClientService.java

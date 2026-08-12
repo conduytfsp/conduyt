@@ -55,7 +55,7 @@ public class FreelancerController {
     }
 
     // PUT /api/freelancers/profile
-    @PutMapping("/profile")
+    @PostMapping("/profile")
     public ResponseEntity<FreelancerProfileDTO> updateProfile(
             @RequestBody FreelancerProfileDTO request,
             Authentication authentication) {

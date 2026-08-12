@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 @Data
 public class FreelancerApplicationDTO {
+    private long jobId;
     private Long id;
     private String jobTitle;
     private Double fixedBudget;

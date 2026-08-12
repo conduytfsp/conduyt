@@ -1,9 +1,11 @@
 package com.mark.conduyt.repository;
 
 
+import aj.org.objectweb.asm.commons.Remapper;
 import com.mark.conduyt.entity.Freelancer;
 import com.mark.conduyt.entity.SkillTag;
 import com.mark.conduyt.entity.User;
+import com.mark.conduyt.enums.AccountStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -31,4 +33,6 @@ public interface FreelancerRepository extends JpaRepository<Freelancer, Long> {
     // Add this to your repository
     @Query(value = "SELECT f FROM Freelancer f ORDER BY FUNCTION('RAND')")
     Page<Freelancer> findRandomFeatured(Pageable pageable);
+
+    Page<Freelancer> findByUserAccountStatus(AccountStatus status, Pageable pageable);
 }

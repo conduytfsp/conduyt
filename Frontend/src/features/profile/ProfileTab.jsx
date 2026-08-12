@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Camera, CheckCircle2, Lock, Mail, Pencil, Plus, ShieldCheck, X } from 'lucide-react';
+import { Camera, Lock, Mail, Pencil, Plus, X } from 'lucide-react';
 import { useAxiosInstance } from '@/config/axiosConfig';
-import { seedProfile } from '@/lib/mockData';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/button';
@@ -17,22 +16,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { initials } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
-// Default mock pool of skills if database fetch is offline
-const DEFAULT_SKILL_POOL = [
-  "React.js", "Spring Boot", "Tailwind CSS", "Java", "JavaScript",
-  "TypeScript", "Node.js", "Python", "PostgreSQL", "MongoDB",
-  "Docker", "AWS", "UI/UX Design", "Figma", "REST APIs"
-];
-
 export default function ProfileTab() {
   const axios = useAxiosInstance();
   const queryClient = useQueryClient();
   const fileInputRef = useRef(null);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [skills, setSkills] = useState(seedProfile.skills);
+  const [skills, setSkills] = useState([]);
   const [skillDraft, setSkillDraft] = useState('');
-  const [avatarPreview, setAvatarPreview] = useState(seedProfile.avatarUrl);
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
 
   // ================= FETCH PROFILE =================
@@ -41,29 +33,27 @@ export default function ProfileTab() {
     queryFn: async () => {
       try {
         const res = await axios.get('/api/freelancers/profile');
-        return res.data?.data || res.data;
+        return res.data?.data || res.data || {};
       } catch (err) {
-        console.warn("Backend profile endpoint offline. Using fallback seed data.");
-        return seedProfile;
+        // If it 404s (new user), return an empty object so the form can still load
+        return {};
       }
-    },
-    placeholderData: seedProfile,
+    }
   });
 
   // ================= FETCH AVAILABLE DATABASE SKILLS =================
-  const { data: dbSkills = DEFAULT_SKILL_POOL } = useQuery({
+  const { data: dbSkills = [] } = useQuery({
     queryKey: ['skills', 'database'],
     queryFn: async () => {
       try {
         const res = await axios.get('/api/skills');
         const raw = res.data?.data || res.data;
-        return Array.isArray(raw) ? raw.map(s => typeof s === 'string' ? s : s.name) : DEFAULT_SKILL_POOL;
+        return Array.isArray(raw) ? raw.map(s => typeof s === 'string' ? s : s.name) : [];
       } catch (err) {
-        console.warn("Backend /api/skills offline. Using default skill pool.");
-        return DEFAULT_SKILL_POOL;
+        return [];
       }
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 
   const {
@@ -73,29 +63,33 @@ export default function ProfileTab() {
     formState: { errors },
   } = useForm({
     defaultValues: {
-      firstName: seedProfile.firstName,
-      lastName: seedProfile.lastName,
-      professionalTitle: seedProfile.professionalTitle,
-      bio: seedProfile.bio,
+      firstName: '',
+      lastName: '',
+      professionalTitle: '',
+      bio: '',
     },
   });
 
+  // Sync form state when profile data arrives
   useEffect(() => {
     if (profile) {
       reset({
+        // Use || '' to ensure nulls become empty strings for controlled inputs
         firstName: profile.firstName || '',
         lastName: profile.lastName || '',
         professionalTitle: profile.professionalTitle || '',
         bio: profile.bio || '',
       });
-      setSkills(profile.skills || seedProfile.skills);
-      setAvatarPreview(profile.avatarUrl || seedProfile.avatarUrl);
+      setSkills(profile.skills || []);
+      setAvatarPreview(profile.avatarUrl || null);
     }
   }, [profile, reset]);
 
+  // ================= MUTATIONS =================
   const updateProfileMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await axios.put('/api/freelancers/profile', payload);
+      // Changed to POST request as requested
+      const res = await axios.post('/api/freelancers/profile', payload);
       return res.data?.data || res.data;
     },
     onSuccess: (updated) => {
@@ -103,9 +97,9 @@ export default function ProfileTab() {
       setIsEditing(false);
       toast.success("Profile updated successfully!");
     },
-    onError: () => {
-      setIsEditing(false);
-      toast.success("Profile updated! (Offline Mode)");
+    onError: (err) => {
+      toast.error("Failed to update profile. Please try again.");
+      console.error(err);
     }
   });
 
@@ -119,14 +113,23 @@ export default function ProfileTab() {
       return res.data?.data || res.data;
     },
     onSuccess: (data) => {
-      if (data?.avatarUrl) setAvatarPreview(data.avatarUrl);
+      if (data?.avatarUrl) {
+        setAvatarPreview(data.avatarUrl);
+        // Persist avatar in cache immediately
+        queryClient.setQueryData(['freelancer', 'profile'], (old) => ({
+          ...old,
+          avatarUrl: data.avatarUrl
+        }));
+      }
       toast.success("Avatar uploaded successfully!");
     },
-    onError: () => {
-      toast.success("Avatar updated locally! (Offline Mode)");
+    onError: (err) => {
+      toast.error("Failed to upload avatar. Please try again.");
+      console.error(err);
     }
   });
 
+  // ================= HANDLERS =================
   const onAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -150,19 +153,26 @@ export default function ProfileTab() {
   const removeSkill = (skill) => setSkills((prev) => prev.filter((s) => s !== skill));
 
   const onSubmit = (values) => {
-    updateProfileMutation.mutate({ ...values, skills });
+    // Trim values to avoid sending just empty spaces
+    const payload = {
+      firstName: values.firstName.trim(),
+      lastName: values.lastName.trim(),
+      professionalTitle: values.professionalTitle.trim(),
+      bio: values.bio.trim(),
+      skills: skills
+    };
+    updateProfileMutation.mutate(payload);
   };
 
   const cancelEditing = () => {
-    const p = profile ?? seedProfile;
     reset({
-      firstName: p.firstName,
-      lastName: p.lastName,
-      professionalTitle: p.professionalTitle,
-      bio: p.bio,
+      firstName: profile?.firstName || '',
+      lastName: profile?.lastName || '',
+      professionalTitle: profile?.professionalTitle || '',
+      bio: profile?.bio || '',
     });
-    setSkills(p.skills || seedProfile.skills);
-    setAvatarPreview(p.avatarUrl || seedProfile.avatarUrl);
+    setSkills(profile?.skills || []);
+    setAvatarPreview(profile?.avatarUrl || null);
     setIsEditing(false);
   };
 
@@ -170,11 +180,12 @@ export default function ProfileTab() {
       (s) => s.toLowerCase().includes(skillDraft.toLowerCase()) && !skills.includes(s)
   );
 
-  if (isLoading && !profile) {
+  if (isLoading) {
     return <ProfileSkeleton />;
   }
 
-  const p = profile ?? seedProfile;
+  // Safe fallback to prevent crash if profile is undefined
+  const p = profile || {};
 
   return (
       <div className="mx-auto max-w-5xl w-full">
@@ -220,9 +231,11 @@ export default function ProfileTab() {
                   <CardContent className="space-y-6">
                     <div className="flex items-center gap-5">
                       <div className="relative">
-                        <Avatar className="h-20 w-20">
-                          <AvatarImage src={avatarPreview ?? undefined} alt={p.firstName} />
-                          <AvatarFallback className="text-xl">{initials(p.firstName, p.lastName)}</AvatarFallback>
+                        <Avatar className="h-20 w-20 border border-border">
+                          <AvatarImage src={avatarPreview ?? undefined} alt={p.firstName || 'User'} />
+                          <AvatarFallback className="text-xl bg-muted text-muted-foreground">
+                            {initials(p.firstName || 'U', p.lastName || '')}
+                          </AvatarFallback>
                         </Avatar>
                         <button
                             type="button"
@@ -311,7 +324,6 @@ export default function ProfileTab() {
                       {skills.length === 0 && <p className="text-sm text-muted-foreground">No skills added yet.</p>}
                     </div>
 
-                    {/* Autocomplete Input Wrapper */}
                     <div className="relative max-w-sm">
                       <div className="flex gap-2">
                         <Input
@@ -334,7 +346,6 @@ export default function ProfileTab() {
                         </Button>
                       </div>
 
-                      {/* Suggestion Dropdown - Fixed with solid white/dark background and heavy shadow */}
                       {showDropdown && skillDraft.trim().length > 0 && (
                           <div className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-white dark:bg-slate-900 shadow-xl max-h-48 overflow-y-auto">
                             {filteredSuggestions.length > 0 ? (
@@ -385,24 +396,45 @@ export default function ProfileTab() {
                 <Card>
                   <CardContent className="p-6 sm:p-8">
                     <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-                      <Avatar className="h-24 w-24 shrink-0">
-                        <AvatarImage src={avatarPreview ?? undefined} alt={p.firstName} />
-                        <AvatarFallback className="text-2xl">{initials(p.firstName, p.lastName)}</AvatarFallback>
+                      <Avatar className="h-24 w-24 shrink-0 border border-border">
+                        <AvatarImage src={avatarPreview ?? undefined} alt={p.firstName || 'User'} />
+                        <AvatarFallback className="text-2xl bg-muted text-muted-foreground">
+                          {initials(p.firstName || 'U', p.lastName || '')}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <h2 className="font-display text-xl font-extrabold text-foreground sm:text-2xl">
-                          {p.firstName} {p.lastName}
+                          {p.firstName || 'Not'} {p.lastName || 'Set'}
                         </h2>
-                        <p className="mt-0.5 text-sm font-medium text-primary">{p.professionalTitle}</p>
-                        <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{p.bio}</p>
+
+                        {/* Improved fallback displays for non-existent profiles */}
+                        {p.professionalTitle ? (
+                            <p className="mt-0.5 text-sm font-medium text-primary">{p.professionalTitle}</p>
+                        ) : (
+                            <p className="mt-0.5 text-sm italic text-muted-foreground">No professional title set</p>
+                        )}
+
+                        {p.bio ? (
+                            <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{p.bio}</p>
+                        ) : (
+                            <div className="mt-4 rounded-md border border-dashed p-4 text-center">
+                              <p className="text-sm text-muted-foreground">You haven't set up your bio yet.</p>
+                              <Button variant="link" size="sm" onClick={() => setIsEditing(true)} className="mt-1 h-auto p-0">
+                                Set up your profile now
+                              </Button>
+                            </div>
+                        )}
                       </div>
                     </div>
 
                     <div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-6">
-                      {p.skills?.map((skill) => (
-                          <Badge key={skill}>{skill}</Badge>
-                      ))}
-                      {(!p.skills || p.skills.length === 0) && <p className="text-sm text-muted-foreground">No skills added yet.</p>}
+                      {p.skills?.length > 0 ? (
+                          p.skills.map((skill) => (
+                              <Badge key={skill}>{skill}</Badge>
+                          ))
+                      ) : (
+                          <p className="text-sm italic text-muted-foreground">No skills added yet.</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -429,7 +461,7 @@ function ContactInfoCard({ profile }) {
                 <Mail className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">{profile.email || "freelancer@conduyt.com"}</p>
+                <p className="text-sm font-medium text-foreground">{profile?.email || "Email not provided"}</p>
                 <p className="text-xs text-muted-foreground">Hidden from clients until hired</p>
               </div>
             </div>

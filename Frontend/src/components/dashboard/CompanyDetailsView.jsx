@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { Building2, Save, Loader2 } from "lucide-react";
-import { useOutletContext } from "react-router-dom"; // <-- Added Context
-import toast, { Toaster } from "react-hot-toast"; // <-- Added Toast
-import { useAxiosInstance } from "../../config/axiosConfig";
+import { useOutletContext } from "react-router-dom";
+import toast, { Toaster } from "react-hot-toast";
+import { useAxiosInstance } from "@/config/axiosConfig";
 
 export default function CompanyDetailsView() {
   const axiosInstance = useAxiosInstance();
 
-  // Grab shared company data directly from the layout context!
+  // Grab shared company data directly from the layout context
   const { companyData, setCompanyData } = useOutletContext();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. LOCAL FORM STATE: Stores typing locally without updating parent state in real-time
+  // 1. LOCAL FORM STATE (Removed companyRole)
   const [localFormData, setLocalFormData] = useState({
     companyName: companyData?.companyName || "",
-    companyRole: companyData?.companyRole || "",
     companyWebsite: companyData?.companyWebsite || "",
     contactNumber: companyData?.contactNumber || "",
     gstin: companyData?.gstin || "",
@@ -27,7 +26,6 @@ export default function CompanyDetailsView() {
     if (companyData) {
       setLocalFormData({
         companyName: companyData.companyName || "",
-        companyRole: companyData.companyRole || "",
         companyWebsite: companyData.companyWebsite || "",
         contactNumber: companyData.contactNumber || "",
         gstin: companyData.gstin || "",
@@ -36,7 +34,6 @@ export default function CompanyDetailsView() {
     }
   }, [companyData]);
 
-  // Updates ONLY local state while typing
   const handleChange = (e) => {
     const { name, value } = e.target;
     setLocalFormData((prev) => ({
@@ -50,30 +47,23 @@ export default function CompanyDetailsView() {
     setIsSubmitting(true);
 
     try {
-      // Standardized Spring Boot RESTful endpoint
-      await axiosInstance.put("/api/clients/company", localFormData);
+      // Changed to POST to support backend upsert (create or update) logic
+      const response = await axiosInstance.post("/api/clients/company", localFormData);
 
-      // 2. SAVE CHANGES: Only now do we update the parent state (header updates now!)
+      // SAVE CHANGES: Update the parent state so headers/sidebars reflect the change
       if (typeof setCompanyData === "function") {
-        setCompanyData(localFormData);
+        setCompanyData(response.data?.data || response.data || localFormData);
       }
 
-      toast.success("Company details updated successfully!"); // <-- Toast instead of alert
+      toast.success("Company details saved successfully!");
     } catch (error) {
-      console.warn("Backend /api/clients/company not implemented yet. Simulating success.");
-
-      // Developer Fallback: Allows UI to update while backend is under construction
-      setTimeout(() => {
-        if (typeof setCompanyData === "function") {
-          setCompanyData(localFormData);
-        }
-        toast.success("Company details updated! (Offline Mode)");
-        setIsSubmitting(false);
-      }, 600);
-      return;
+      console.error("Failed to save company details:", error);
+      toast.error(
+          error.response?.data?.message || "Failed to save company details. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
   return (
@@ -88,7 +78,7 @@ export default function CompanyDetailsView() {
           <div>
             <h2 className="text-xl font-bold text-gray-900">Organization Profile</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Manage your official company credentials, role, and business tax details.
+              Manage your official company credentials and business tax details.
             </p>
           </div>
         </div>
@@ -96,7 +86,7 @@ export default function CompanyDetailsView() {
         {/* ================= FORM ================= */}
         <form className="space-y-5" onSubmit={handleSubmit} autoComplete="off">
 
-          {/* Company Name & Role */}
+          {/* Row 1: Company Name & Contact Number */}
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">
@@ -109,40 +99,6 @@ export default function CompanyDetailsView() {
                   required
                   placeholder="e.g. Acme Technologies"
                   value={localFormData.companyName}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#09D66D] focus:ring-4 focus:ring-[#09D66D]/10"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">
-                Your Role <span className="text-red-500">*</span>
-              </label>
-              <input
-                  type="text"
-                  name="companyRole"
-                  autoComplete="off"
-                  required
-                  placeholder="e.g. Hiring Manager, CTO"
-                  value={localFormData.companyRole}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#09D66D] focus:ring-4 focus:ring-[#09D66D]/10"
-              />
-            </div>
-          </div>
-
-          {/* Website & Phone */}
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">
-                Website URL <span className="text-red-500">*</span>
-              </label>
-              <input
-                  type="url"
-                  name="companyWebsite"
-                  autoComplete="off"
-                  required
-                  placeholder="https://example.com"
-                  value={localFormData.companyWebsite}
                   onChange={handleChange}
                   className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#09D66D] focus:ring-4 focus:ring-[#09D66D]/10"
               />
@@ -164,22 +120,39 @@ export default function CompanyDetailsView() {
             </div>
           </div>
 
-          {/* GSTIN */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">
-              Tax ID (GSTIN) <span className="text-red-500">*</span>
-            </label>
-            <input
-                type="text"
-                name="gstin"
-                autoComplete="new-password"
-                required
-                maxLength={15}
-                placeholder="Enter 15-digit GSTIN"
-                value={localFormData.gstin}
-                onChange={handleChange}
-                className="w-full md:w-1/2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 font-mono text-sm uppercase text-gray-900 outline-none transition-all focus:border-[#09D66D] focus:ring-4 focus:ring-[#09D66D]/10"
-            />
+          {/* Row 2: Website URL & GSTIN */}
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                Website URL <span className="text-red-500">*</span>
+              </label>
+              <input
+                  type="url"
+                  name="companyWebsite"
+                  autoComplete="off"
+                  required
+                  placeholder="https://example.com"
+                  value={localFormData.companyWebsite}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#09D66D] focus:ring-4 focus:ring-[#09D66D]/10"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                Tax ID (GSTIN) <span className="text-red-500">*</span>
+              </label>
+              <input
+                  type="text"
+                  name="gstin"
+                  autoComplete="new-password"
+                  required
+                  maxLength={15}
+                  placeholder="Enter 15-digit GSTIN"
+                  value={localFormData.gstin}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 font-mono text-sm uppercase text-gray-900 outline-none transition-all focus:border-[#09D66D] focus:ring-4 focus:ring-[#09D66D]/10"
+              />
+            </div>
           </div>
 
           {/* Address */}
@@ -195,12 +168,12 @@ export default function CompanyDetailsView() {
                 placeholder="Enter official office address..."
                 value={localFormData.companyAddress}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition-all focus:border-[#09D66D] focus:ring-4 focus:ring-[#09D66D]/10 resize-none"
+                className="w-full resize-none rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition-all focus:border-[#09D66D] focus:ring-4 focus:ring-[#09D66D]/10"
             />
           </div>
 
           {/* ================= ACTION BUTTON ================= */}
-          <div className="pt-4 flex justify-end">
+          <div className="flex justify-end pt-4">
             <button
                 type="submit"
                 disabled={isSubmitting}

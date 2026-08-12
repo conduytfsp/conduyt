@@ -1,11 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, Download, ExternalLink, FileText, Globe, Loader2, Pencil, Trash2, UploadCloud } from 'lucide-react';
+import { Download, ExternalLink, FileText, Globe, Loader2, Pencil, Trash2, UploadCloud } from 'lucide-react';
 import { FaGithub, FaLinkedin } from "react-icons/fa";
 import { useAxiosInstance } from '@/config/axiosConfig';
-import { seedPortfolio } from '@/lib/mockData';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/button';
@@ -38,23 +37,32 @@ export default function PortfolioTab() {
         queryFn: async () => {
             try {
                 const res = await axios.get('/api/freelancers/portfolio');
-                return res.data?.data || res.data;
+                return res.data?.data || res.data || {};
             } catch (err) {
-                console.warn("Backend portfolio endpoint offline. Using fallback seed data.");
-                return seedPortfolio;
+                // Return empty object on 404 (new user hasn't saved yet)
+                return {};
             }
-        },
-        placeholderData: seedPortfolio,
+        }
     });
 
-    const form = useForm({
-        values: {
-            githubUrl: portfolio?.githubUrl ?? seedPortfolio.githubUrl,
-            linkedinUrl: portfolio?.linkedinUrl ?? seedPortfolio.linkedinUrl,
-            portfolioUrl: portfolio?.portfolioUrl ?? seedPortfolio.portfolioUrl,
+    const { register, handleSubmit, reset, formState: { errors } } = useForm({
+        defaultValues: {
+            githubUrl: '',
+            linkedinUrl: '',
+            portfolioUrl: '',
         },
     });
-    const { register, handleSubmit, reset, formState: { errors } } = form;
+
+    // Sync form state when portfolio data arrives
+    useEffect(() => {
+        if (portfolio) {
+            reset({
+                githubUrl: portfolio.githubUrl || '',
+                linkedinUrl: portfolio.linkedinUrl || '',
+                portfolioUrl: portfolio.portfolioUrl || '',
+            });
+        }
+    }, [portfolio, reset]);
 
     // ================= UPDATE LINKS MUTATION =================
     const updateLinksMutation = useMutation({
@@ -67,9 +75,9 @@ export default function PortfolioTab() {
             setIsEditing(false);
             toast.success("Portfolio links saved successfully!");
         },
-        onError: () => {
-            setIsEditing(false);
-            toast.success("Portfolio links saved! (Offline Mode)");
+        onError: (err) => {
+            toast.error("Failed to save portfolio links. Please try again.");
+            console.error(err);
         },
     });
 
@@ -85,14 +93,15 @@ export default function PortfolioTab() {
         },
         onSuccess: (res) => {
             queryClient.setQueryData(['freelancer', 'portfolio'], (prev) => ({
-                ...(prev ?? seedPortfolio),
+                ...(prev || {}),
                 resumeUrl: res.url,
                 resumeFileName: res.fileName,
             }));
             toast.success("Résumé uploaded successfully!");
         },
-        onError: () => {
-            toast.success("Résumé uploaded locally! (Offline Mode)");
+        onError: (err) => {
+            toast.error("Failed to upload résumé. Please try again.");
+            console.error(err);
         }
     });
 
@@ -103,14 +112,15 @@ export default function PortfolioTab() {
         },
         onSuccess: () => {
             queryClient.setQueryData(['freelancer', 'portfolio'], (prev) => ({
-                ...(prev ?? seedPortfolio),
+                ...(prev || {}),
                 resumeUrl: null,
                 resumeFileName: null,
             }));
             toast.success("Résumé removed successfully!");
         },
-        onError: () => {
-            toast.success("Résumé removed locally! (Offline Mode)");
+        onError: (err) => {
+            toast.error("Failed to remove résumé. Please try again.");
+            console.error(err);
         }
     });
 
@@ -129,17 +139,14 @@ export default function PortfolioTab() {
 
     const cancelEditing = () => {
         reset({
-            githubUrl: portfolio?.githubUrl ?? seedPortfolio.githubUrl,
-            linkedinUrl: portfolio?.linkedinUrl ?? seedPortfolio.linkedinUrl,
-            portfolioUrl: portfolio?.portfolioUrl ?? seedPortfolio.portfolioUrl,
+            githubUrl: portfolio?.githubUrl || '',
+            linkedinUrl: portfolio?.linkedinUrl || '',
+            portfolioUrl: portfolio?.portfolioUrl || '',
         });
         setIsEditing(false);
     };
 
-    const p = portfolio ?? seedPortfolio;
-    const resumeName = p.resumeFileName;
-
-    if (isLoading && !portfolio) {
+    if (isLoading) {
         return (
             <div className="mx-auto max-w-5xl space-y-6 w-full">
                 <Skeleton className="h-16 w-full" />
@@ -148,6 +155,9 @@ export default function PortfolioTab() {
             </div>
         );
     }
+
+    const p = portfolio || {};
+    const resumeName = p.resumeFileName;
 
     return (
         <div className="mx-auto max-w-5xl w-full">
@@ -297,7 +307,7 @@ export default function PortfolioTab() {
                                         p[key] ? (
                                             <a
                                                 key={key}
-                                                href={p[key]}
+                                                href={p[key].startsWith('http') ? p[key] : `https://${p[key]}`}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 className="group flex items-center justify-between rounded-lg border border-border bg-surface p-3 transition hover:border-primary/40 hover:bg-primary-soft"
@@ -336,7 +346,6 @@ function ResumeFileCard({ name, onDelete, className = '', axiosInstance }) {
     const handleAction = async (actionType) => {
         setIsLoading(true);
         try {
-            // 1. Get the direct Cloudinary URL from the backend
             const response = await axiosInstance.get('/api/freelancers/resume/view');
             const fileUrl = response.data?.url || response.data;
 
@@ -346,10 +355,8 @@ function ResumeFileCard({ name, onDelete, className = '', axiosInstance }) {
             }
 
             if (actionType === 'preview') {
-                // Opens directly from Cloudinary CDN instantly
                 window.open(fileUrl, '_blank', 'noopener,noreferrer');
             } else if (actionType === 'download') {
-                // Forces download directly from Cloudinary
                 const a = document.createElement('a');
                 a.href = fileUrl;
                 a.target = '_blank';
@@ -410,7 +417,6 @@ function ResumeFileCard({ name, onDelete, className = '', axiosInstance }) {
         </div>
     );
 }
-
 
 function LinkField({ icon, label, placeholder, error, registration }) {
     return (

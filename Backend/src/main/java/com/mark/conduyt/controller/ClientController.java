@@ -54,18 +54,20 @@ public class ClientController {
 
     // ================= 3. UPDATE COMPANY DETAILS =================
     // Called by CompanyDetailsView.jsx (/api/clients/company)
-    @PutMapping("/company")
-    public ResponseEntity<ApiResponse<Void>> updateCompany(
+    @PostMapping("/company")
+    public ResponseEntity<ApiResponse<CompanyDetailsUpdateDTO>> updateCompany(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody CompanyDetailsUpdateDTO updateDto) {
 
         String email = userDetails.getUsername();
-        clientService.updateCompanyProfile(email, updateDto);
+
+        // Have the service return the saved DTO
+        CompanyDetailsUpdateDTO savedCompany = clientService.updateCompanyProfile(email, updateDto);
 
         return ResponseEntity.ok(new ApiResponse<>(
                 true,
                 "Company details updated successfully",
-                null
+                savedCompany // Returns the data back to the frontend
         ));
     }
 

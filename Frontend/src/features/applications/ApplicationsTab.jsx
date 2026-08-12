@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // <-- Added import
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Building2, Calendar, Copy, Mail, MessageSquareText, Wallet, X, Sparkles, Phone, Eye, CheckCircle2 } from 'lucide-react';
+import { Building2, Calendar, Copy, Mail, MessageSquareText, Wallet, X, Sparkles, Phone, Eye, CheckCircle2, ExternalLink } from 'lucide-react'; // <-- Added ExternalLink
 import { useAxiosInstance } from '@/config/axiosConfig';
-import { seedApplications } from '@/lib/mockData';
 import { useAppStore } from '@/store/useAppStore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,7 +25,7 @@ import toast from 'react-hot-toast';
 const FILTERS = [
   { key: 'all', label: 'All' },
   { key: 'pending', label: 'Pending' },
-  { key: 'shortlisted', label: 'Shortlisted' }, // FIX: Added Shortlisted filter
+  { key: 'shortlisted', label: 'Shortlisted' },
   { key: 'active', label: 'Active Contracts' },
   { key: 'completed', label: 'Completed' },
 ];
@@ -39,7 +39,6 @@ const STATUS_META = {
   WITHDRAWN: { label: 'Withdrawn', variant: 'secondary' },
 };
 
-// FIX: Now accepts the whole app object to read both application and job statuses
 function matchesFilter(app, filter) {
   const appStatus = app.status ? app.status.toUpperCase() : 'SUBMITTED';
   const jobStatus = app.jobStatus ? app.jobStatus.toUpperCase() : 'OPEN';
@@ -72,13 +71,12 @@ export default function ApplicationsTab() {
     queryFn: async () => {
       try {
         const res = await axios.get('/api/freelancers/applications');
-        return res.data?.data || res.data;
+        return res.data?.data || res.data || [];
       } catch (err) {
-        console.warn("Backend applications endpoint offline. Using fallback mock data.");
-        return seedApplications;
+        // Return empty array on error (e.g. 404 if no profile exists yet)
+        return [];
       }
-    },
-    placeholderData: seedApplications,
+    }
   });
 
   // ================= WITHDRAW MUTATION =================
@@ -88,24 +86,22 @@ export default function ApplicationsTab() {
     },
     onSuccess: (_data, id) => {
       queryClient.setQueryData(['freelancer', 'applications'], (prev) =>
-          (prev ?? []).map((a) => (a.id === id ? { ...a, status: 'WITHDRAWN' } : a)),
+          (prev || []).map((a) => (a.id === id ? { ...a, status: 'WITHDRAWN' } : a)),
       );
       setWithdrawApp(null);
       toast.success("Application withdrawn successfully.");
     },
-    onError: () => {
-      toast.success("Application withdrawn! (Offline Mode)");
-      queryClient.setQueryData(['freelancer', 'applications'], (prev) =>
-          (prev ?? []).map((a) => (a.id === id ? { ...a, status: 'WITHDRAWN' } : a)),
-      );
+    onError: (err) => {
+      toast.error("Failed to withdraw application.");
+      console.error(err);
       setWithdrawApp(null);
     }
   });
 
-  const list = applications ?? seedApplications;
+  // Fallback to empty array if undefined
+  const list = applications || [];
   const filtered = useMemo(() => list.filter((a) => matchesFilter(a, filter)), [list, filter]);
 
-  // FIX: Update counts to use the new matchesFilter logic
   const counts = useMemo(
       () => ({
         all: list.length,
@@ -145,7 +141,7 @@ export default function ApplicationsTab() {
           ))}
         </div>
 
-        {isLoading && !applications ? (
+        {isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-32 w-full" />
               <Skeleton className="h-32 w-full" />
@@ -186,7 +182,7 @@ export default function ApplicationsTab() {
 
             <div className="space-y-4 text-sm">
               {/* AI Score Badge Box */}
-              {selectedApp?.aiCompatibilityScore !== undefined && (
+              {selectedApp?.aiCompatibilityScore !== undefined && selectedApp?.aiCompatibilityScore !== null && (
                   <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 p-3.5 rounded-xl">
                     <div className="flex items-center gap-2 text-emerald-800 font-bold">
                       <Sparkles size={18} className="text-[#09D66D]" /> AI Compatibility Match
@@ -250,10 +246,11 @@ export default function ApplicationsTab() {
 }
 
 function ApplicationCard({ app, onViewDetails, onWithdraw }) {
+  const navigate = useNavigate(); // <-- Hook to handle navigation
+
   const baseStatus = app.status ? app.status.toUpperCase() : 'SUBMITTED';
   const jobStatus = app.jobStatus ? app.jobStatus.toUpperCase() : 'OPEN';
 
-  // FIX: Determine effective status based on both application and job state
   let effectiveStatus = baseStatus;
   if (baseStatus === 'ACCEPTED' && jobStatus === 'COMPLETED') {
     effectiveStatus = 'COMPLETED';
@@ -262,8 +259,17 @@ function ApplicationCard({ app, onViewDetails, onWithdraw }) {
   const meta = STATUS_META[effectiveStatus] || { label: effectiveStatus, variant: 'secondary' };
 
   const isPending = baseStatus === 'SUBMITTED' || baseStatus === 'SHORTLISTED';
-  const isHired = effectiveStatus === 'ACCEPTED'; // Maps to Active Contract
+  const isHired = effectiveStatus === 'ACCEPTED';
   const isCompleted = effectiveStatus === 'COMPLETED';
+
+  // Navigate function - assumes your public job route is /jobs/:jobId
+  const handleViewJob = () => {
+    if (app.jobId) {
+      navigate(`/jobs/${app.jobId}`);
+    } else {
+      toast.error("Job link unavailable. Job ID missing.");
+    }
+  };
 
   return (
       <Card className={cn(isHired && 'border-primary/40 ring-1 ring-primary/20')}>
@@ -322,6 +328,11 @@ function ApplicationCard({ app, onViewDetails, onWithdraw }) {
               <Eye className="h-3.5 w-3.5" /> View Proposal & AI Match
             </Button>
 
+            {/* <-- NEW BUTTON HERE --> */}
+            <Button variant="outline" size="sm" onClick={handleViewJob} className="cursor-pointer">
+              <ExternalLink className="h-3.5 w-3.5" /> View Job Posting
+            </Button>
+
             {isPending && (
                 <Button variant="ghost" size="sm" className="text-destructive hover:bg-red-50 cursor-pointer" onClick={onWithdraw}>
                   <X className="h-3.5 w-3.5" /> Withdraw application
@@ -335,7 +346,6 @@ function ApplicationCard({ app, onViewDetails, onWithdraw }) {
 
 function ClientContactReveal({ email, contactNo, label, muted = false }) {
   const [copiedEmail, setCopiedEmail] = useState(false);
-  const [copiedPhone, setCopiedPhone] = useState(false);
 
   if (!email && !contactNo) return null;
 
@@ -381,7 +391,7 @@ function EmptyState({ filter }) {
   const copy = {
     all: "You haven't sent any applications yet. Once you apply to a job, it'll show up here.",
     pending: 'No pending applications right now.',
-    shortlisted: "None of your applications are currently shortlisted.", // FIX: Added Shortlisted copy
+    shortlisted: "None of your applications are currently shortlisted.",
     active: 'No active contracts yet. Applications move here once a client hires you.',
     completed: "You haven't completed a job yet.",
   };
