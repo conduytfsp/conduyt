@@ -35,4 +35,7 @@ public interface FreelancerRepository extends JpaRepository<Freelancer, Long> {
     Page<Freelancer> findRandomFeatured(Pageable pageable);
 
     Page<Freelancer> findByUserAccountStatus(AccountStatus status, Pageable pageable);
+
+    @Query("SELECT f FROM Freelancer f JOIN f.user u WHERE u.accountStatus = 'ACTIVE'")
+    List<Freelancer> findAllActive();
 }

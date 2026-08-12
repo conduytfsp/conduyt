@@ -18,10 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -421,12 +418,18 @@ public class FreelancerService {
 
     @Transactional(readOnly = true)
     public List<PublicFreelancerProfileDTO> getFeaturedFreelancers() {
-        Pageable top3 = PageRequest.of(0, 3);
-        Page<Freelancer> freelancers = freelancerRepository.findRandomFeatured(top3);
+        // 1. Fetch all active freelancers from the database
+        List<Freelancer> activeFreelancers = freelancerRepository.findAllActive();
 
-        return freelancers.getContent().stream()
-                // Extra Java-level safety check for ACTIVE accounts
-                .filter(f -> f.getUser() != null && f.getUser().getAccountStatus() == AccountStatus.ACTIVE)
+        // 2. Shuffle them to maintain randomness when there are more than 3
+        Collections.shuffle(activeFreelancers);
+
+        // 3. Take up to 3 (if <= 3 exist, it automatically returns all of them)
+        List<Freelancer> selectedFreelancers = activeFreelancers.stream()
+                .limit(3)
+                .collect(Collectors.toList());
+
+        return selectedFreelancers.stream()
                 .map(f -> {
                     PublicFreelancerProfileDTO dto = new PublicFreelancerProfileDTO();
                     dto.setDisplayName(f.getUser().getFullName());
