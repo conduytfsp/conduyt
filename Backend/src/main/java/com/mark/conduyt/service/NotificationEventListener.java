@@ -1,4 +1,4 @@
-package com.mark.conduyt.listener;
+package com.mark.conduyt.service;
 
 import com.mark.conduyt.entity.Application;
 import com.mark.conduyt.entity.Freelancer;
